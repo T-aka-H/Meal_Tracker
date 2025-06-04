@@ -50,6 +50,7 @@
                 </div>
                 <button onclick="showAddUserModal()" class="btn btn-secondary btn-small">👤 新規ユーザー追加</button>
                 <button onclick="refreshUsers()" class="btn btn-primary btn-small">🔄 更新</button>
+                <button onclick="showDeleteUserModal()" class="btn btn-danger btn-small">❌ ユーザー削除</button>
             </div>
             
             <div id="currentUserDisplay" class="current-user" style="display: none;">
@@ -168,6 +169,21 @@
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                 <button onclick="closeModal('confirmModal')" class="btn btn-secondary">キャンセル</button>
                 <button id="confirmBtn" class="btn btn-danger">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ユーザー削除モーダル -->
+    <div id="deleteUserModal" class="modal">
+        <div class="modal-content">
+            <h3>ユーザー削除</h3>
+            <p>このユーザーを削除すると、全ての記録も削除されます。この操作は取り消せません。</p>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button onclick="closeModal('deleteUserModal')" class="btn btn-secondary">キャンセル</button>
+                <button onclick="deleteUser()" class="btn btn-danger">
+                    <span class="loading" id="deleteUserLoading" style="display: none;"></span>
+                    削除
+                </button>
             </div>
         </div>
     </div>

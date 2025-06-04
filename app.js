@@ -468,6 +468,14 @@ function showAddUserModal() {
     document.getElementById('newUserName').focus();
 }
 
+function showDeleteUserModal() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+    document.getElementById('deleteUserModal').style.display = 'block';
+}
+
 // モーダルを閉じる
 function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
@@ -984,4 +992,63 @@ function updateUserSelect() {
     });
     
     console.log('ユーザー選択肢を更新:', allUsers.length);
+}
+
+async function deleteUser() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+
+    const loadingSpinner = document.getElementById('deleteUserLoading');
+    loadingSpinner.style.display = 'inline-block';
+
+    try {
+        // まず、ユーザーの全ての記録を削除
+        const recordsResponse = await fetch(`${PROXY_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`
+            }
+        });
+
+        if (!recordsResponse.ok) {
+            const errorText = await recordsResponse.text();
+            throw new Error(`記録の削除に失敗: HTTP ${recordsResponse.status}: ${errorText}`);
+        }
+
+        // 次に、ユーザーを削除
+        const userResponse = await fetch(`${PROXY_URL}/rest/v1/users?id=eq.${currentUserId}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`
+            }
+        });
+
+        if (!userResponse.ok) {
+            const errorText = await userResponse.text();
+            throw new Error(`ユーザーの削除に失敗: HTTP ${userResponse.status}: ${errorText}`);
+        }
+
+        closeModal('deleteUserModal');
+        showNotification('ユーザーを削除しました', 'success');
+        
+        // ユーザー情報をリセット
+        currentUser = null;
+        currentUserId = null;
+        document.getElementById('currentUserDisplay').style.display = 'none';
+        document.getElementById('userStats').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'none';
+        
+        // ユーザーリストを更新
+        await loadUsers();
+        
+    } catch (error) {
+        console.error('ユーザー削除エラー:', error);
+        showNotification('ユーザーの削除に失敗しました', 'error');
+    } finally {
+        loadingSpinner.style.display = 'none';
+    }
 } 
