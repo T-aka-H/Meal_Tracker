@@ -9,9 +9,209 @@ let allUsers = [];
 let supabaseInstance = null;
 
 // プロキシサーバーのURL（環境に応じて変更）
+// 1. プロキシURLの修正
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
-    : 'https://meal-tracker-q7b6.onrender.com';  // Renderで生成されたURL
+    : 'https://meal-tracker-1-y2dy.onrender.com';  // 新しいプロキシサーバーURL
+
+// 2. 食事記録の更新（プロキシ対応版に修正）
+async function updateMealRecord() {
+    if (!editingId) return;
+    
+    const record = getMealFormData();
+    const loadingSpinner = document.getElementById('addLoading');
+    loadingSpinner.style.display = 'inline-block';
+    
+    try {
+        const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?id=eq.${editingId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'prefer': 'return=minimal'
+            },
+            body: JSON.stringify(record)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        showNotification('記録を更新しました', 'success');
+        editingId = null;
+        document.getElementById('mealForm').reset();
+        setDefaultDateTime();
+        document.querySelector('button[type="submit"]').textContent = '📝 記録を追加';
+        await Promise.all([
+            loadMealRecords(),
+            updateUserStats()
+        ]);
+        
+    } catch (error) {
+        console.error('記録更新エラー:', error);
+        showNotification('記録の更新に失敗しました', 'error');
+    } finally {
+        loadingSpinner.style.display = 'none';
+    }
+}
+
+// 3. 記録の編集（プロキシ対応版に修正）
+async function editRecord(id) {
+    try {
+        const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
+            method: 'GET',
+            headers: {
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        const record = data[0]; // 配列の最初の要素を取得
+        
+        if (!record) {
+            throw new Error('記録が見つかりません');
+        }
+        
+        const datetime = new Date(record.datetime);
+        document.getElementById('date').value = datetime.toISOString().split('T')[0];
+        document.getElementById('time').value = datetime.toTimeString().slice(0, 5);
+        document.getElementById('mealType').value = record.meal_type;
+        document.getElementById('foodName').value = record.food_name;
+        document.getElementById('calories').value = record.calories || '';
+        document.getElementById('location').value = record.location || '';
+        document.getElementById('notes').value = record.notes || '';
+        
+        editingId = id;
+        document.querySelector('button[type="submit"]').textContent = '✏️ 記録を更新';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+    } catch (error) {
+        console.error('記録編集エラー:', error);
+        showNotification('記録の読み込みに失敗しました', 'error');
+    }
+}
+
+// 4. 記録の削除（プロキシ対応版に修正）
+function deleteRecord(id) {
+    document.getElementById('confirmModal').style.display = 'block';
+    document.getElementById('confirmMessage').textContent = 'この記録を削除してもよろしいですか？';
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.onclick = async () => {
+        try {
+            const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?id=eq.${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            closeModal('confirmModal');
+            showNotification('記録を削除しました', 'success');
+            await Promise.all([
+                loadMealRecords(),
+                updateUserStats()
+            ]);
+            
+        } catch (error) {
+            console.error('記録削除エラー:', error);
+            showNotification('記録の削除に失敗しました', 'error');
+        }
+    };
+}
+
+// 5. ユーザーデータの削除（プロキシ対応版に修正）
+function clearUserData() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+    
+    document.getElementById('confirmModal').style.display = 'block';
+    document.getElementById('confirmMessage').textContent = 
+        'このユーザーの全ての記録を削除してもよろしいですか？この操作は取り消せません。';
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    confirmBtn.onclick = async () => {
+        try {
+            const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+            
+            closeModal('confirmModal');
+            showNotification('全ての記録を削除しました', 'success');
+            await Promise.all([
+                loadMealRecords(),
+                updateUserStats()
+            ]);
+            
+        } catch (error) {
+            console.error('データ削除エラー:', error);
+            showNotification('データの削除に失敗しました', 'error');
+        }
+    };
+}
+
+// 6. データダウンロード機能もプロキシ対応版に修正（必要に応じて）
+async function downloadUserData() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        
+        const csvContent = convertToCSV(data);
+        downloadCSV(csvContent, `meal_records_${currentUser.name}.csv`);
+        showNotification('データをダウンロードしました', 'success');
+        
+    } catch (error) {
+        console.error('データダウンロードエラー:', error);
+        showNotification('データのダウンロードに失敗しました', 'error');
+    }
+}
 
 // Supabaseクライアントの取得
 function getSupabaseClient(url, key) {
