@@ -12,7 +12,7 @@ let supabaseInstance = null;
 // 1. プロキシURLの修正
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
-    : 'https://meal-tracker-1-y2dy.onrender.com';  // 新しいプロキシサーバーURL
+    : 'https://meal-tracker-2-jyq6.onrender.com';  // 新しいプロキシサーバーURL
 
 // 2. 食事記録の更新（プロキシ対応版に修正）
 async function updateMealRecord() {
