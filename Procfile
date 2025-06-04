@@ -1,1 +1,1 @@
-web: python -m gunicorn proxy_server:app --bind 0.0.0.0:$PORT
+web: python proxy_server.py
