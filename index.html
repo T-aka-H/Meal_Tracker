@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:* https://localhost:* https://nhnanyzkcxlysugllpde.supabase.co;">
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
+    <title>食事記録アプリ - Supabase版</title>
+    <!-- 最新のSupabaseライブラリを使用 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
+    <!-- バックアップCDN -->
+    <script>
+        if (typeof window.supabase === 'undefined') {
+            document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"><\/script>');
+        }
+    </script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🍽️ 食事記録アプリ - Supabase版</h1>
+        
+        <!-- Supabase設定セクション -->
+        <div class="setup-section" id="setupSection">
+            <h3>🔧 Supabase設定</h3>
+            <div class="config-form">
+                <div class="config-group">
+                    <label for="supabaseUrl">Project URL</label>
+                    <input type="text" id="supabaseUrl" placeholder="https://your-project.supabase.co">
+                </div>
+                <div class="config-group">
+                    <label for="supabaseKey">Anon Public Key</label>
+                    <input type="text" id="supabaseKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+                </div>
+                <button onclick="connectSupabase()" class="btn btn-primary">接続</button>
+            </div>
+            <div id="connectionStatus" class="status disconnected">
+                未接続 - 上記の設定を入力して「接続」ボタンを押してください
+            </div>
+        </div>
+
+        <!-- ユーザー管理セクション -->
+        <div class="user-section" id="userSection" style="display: none;">
+            <h2>👥 ユーザー管理</h2>
+            <div class="user-controls">
+                <div class="form-group user-select">
+                    <label for="userSelect">現在のユーザー</label>
+                    <select id="userSelect" onchange="switchUser()">
+                        <option value="">ユーザーを選択...</option>
+                    </select>
+                </div>
+                <button onclick="showAddUserModal()" class="btn btn-secondary btn-small">👤 新規ユーザー追加</button>
+                <button onclick="refreshUsers()" class="btn btn-primary btn-small">🔄 更新</button>
+            </div>
+            
+            <div id="currentUserDisplay" class="current-user" style="display: none;">
+                現在のユーザー: <span id="currentUserName"></span>
+            </div>
+            
+            <div class="user-stats" id="userStats" style="display: none;">
+                <div class="user-stat-card">
+                    <div class="user-stat-number" id="userTotalRecords">0</div>
+                    <div class="user-stat-label">総記録数</div>
+                </div>
+                <div class="user-stat-card">
+                    <div class="user-stat-number" id="userThisWeekRecords">0</div>
+                    <div class="user-stat-label">今週の記録</div>
+                </div>
+                <div class="user-stat-card">
+                    <div class="user-stat-number" id="userAvgCalories">0</div>
+                    <div class="user-stat-label">平均カロリー</div>
+                </div>
+                <div class="user-stat-card">
+                    <div class="user-stat-number" id="userLastMeal">-</div>
+                    <div class="user-stat-label">最後の記録</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- メインコンテンツ -->
+        <div id="mainContent" style="display: none;">
+            <div class="form-section">
+                <h2>✨ 新しい食事記録を追加</h2>
+                <form id="mealForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="date">日付</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="time">時間</label>
+                            <input type="time" id="time" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="mealType">食事タイプ</label>
+                            <select id="mealType" required>
+                                <option value="">選択してください</option>
+                                <option value="朝食">朝食</option>
+                                <option value="昼食">昼食</option>
+                                <option value="夕食">夕食</option>
+                                <option value="間食">間食</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="foodName">料理名</label>
+                            <input type="text" id="foodName" placeholder="例: 親子丼" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="calories">カロリー (kcal)</label>
+                            <input type="number" id="calories" placeholder="例: 650" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="location">場所</label>
+                            <input type="text" id="location" placeholder="例: 自宅、レストラン名など">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes">メモ</label>
+                        <textarea id="notes" placeholder="味の感想、一緒に食べた人、その他のメモ..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">
+                        <span class="loading" id="addLoading" style="display: none;"></span>
+                        📝 記録を追加
+                    </button>
+                </form>
+            </div>
+
+            <div class="controls">
+                <button onclick="downloadUserData()" class="btn btn-secondary">💾 データをダウンロード</button>
+                <button onclick="downloadAllData()" class="btn btn-secondary">📊 全ユーザーデータダウンロード</button>
+                <button onclick="clearUserData()" class="btn btn-danger">🗑️ ユーザーデータ削除</button>
+            </div>
+
+            <div class="records-section">
+                <h2>📊 記録一覧</h2>
+                <div id="recordsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ユーザー追加モーダル -->
+    <div id="addUserModal" class="modal">
+        <div class="modal-content">
+            <h3>新規ユーザー追加</h3>
+            <div class="form-group">
+                <label for="newUserName">ユーザー名</label>
+                <input type="text" id="newUserName" placeholder="ユーザー名を入力" maxlength="50">
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button onclick="closeModal('addUserModal')" class="btn btn-secondary">キャンセル</button>
+                <button onclick="addUser()" class="btn btn-primary">
+                    <span class="loading" id="userLoading" style="display: none;"></span>
+                    追加
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 確認モーダル -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3>確認</h3>
+            <p id="confirmMessage"></p>
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button onclick="closeModal('confirmModal')" class="btn btn-secondary">キャンセル</button>
+                <button id="confirmBtn" class="btn btn-danger">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html> 
