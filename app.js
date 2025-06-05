@@ -1089,9 +1089,9 @@ async function getAIAdvice() {
             adviceElement.innerHTML = '<div class="loading">AIアドバイスを生成中...</div>';
         }
 
-        // 最新の食事記録を取得
+        // 最新の食事記録を取得（Supabase APIに直接アクセス）
         const recordsResponse = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
+            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
             {
                 method: 'GET',
                 headers: {
@@ -1112,16 +1112,15 @@ async function getAIAdvice() {
             throw new Error('食事記録が見つかりません');
         }
 
-        // AIアドバイスを取得
+        // AIアドバイスを取得（プロキシサーバー経由）
         const adviceResponse = await fetch(`${PROXY_URL}/api/get-meal-advice`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                meal_records: mealRecords
+                meal_records: mealRecords,
+                api_key: getSupabaseKey() // APIキーを安全に渡す
             })
         });
 
