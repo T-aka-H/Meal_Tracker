@@ -417,11 +417,9 @@ function setDefaultDateTime() {
 
 // Supabase設定の読み込み
 function loadSupabaseConfig() {
-    const savedUrl = localStorage.getItem('supabaseUrl');
     const savedKey = localStorage.getItem('supabaseKey');
     
-    if (savedUrl && savedKey) {
-        document.getElementById('supabaseUrl').value = savedUrl;
+    if (savedKey) {
         document.getElementById('supabaseKey').value = savedKey;
         connectSupabase();
     }
@@ -429,20 +427,23 @@ function loadSupabaseConfig() {
 
 // Supabaseへの接続
 async function connectSupabase() {
-    let url = document.getElementById('supabaseUrl').value.trim();
     const key = document.getElementById('supabaseKey').value.trim();
     
-    if (!url || !key) {
-        showNotification('URLとキーの両方を入力してください', 'error');
+    if (!key) {
+        showNotification('APIキーを入力してください', 'error');
         return;
     }
 
     try {
-        url = url.replace(/\/$/, '');
-        supabase = window.supabase.createClient(url, key);
+        // 古いクライアントインスタンスをクリア
+        supabase = null;
+        supabaseInstance = null;
+
+        // 新しいSupabaseクライアントを作成
+        supabase = window.supabase.createClient(supabaseUrl, key);
 
         // ここはSupabase本体に直接アクセス
-        const response = await fetch(`${url}/rest/v1/users?limit=1`, {
+        const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
                 'apikey': key,
@@ -476,8 +477,7 @@ async function connectSupabase() {
         await loadUsers();
         showNotification('Supabaseに接続しました！', 'success');
         
-        // 設定を保存
-        localStorage.setItem('supabaseUrl', url);
+        // 設定を保存（URLは定数を使用するので保存不要）
         localStorage.setItem('supabaseKey', key);
         
     } catch (error) {
