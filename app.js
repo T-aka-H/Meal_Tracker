@@ -1104,8 +1104,11 @@ async function getAIAdvice() {
         
         // アドバイスを表示
         const adviceResult = document.getElementById('aiAdviceResult');
-        const adviceContent = document.getElementById('aiAdviceContent');
-        adviceContent.textContent = result.advice;
+        const adviceContentEn = document.getElementById('aiAdviceContent-en');
+        const adviceContentJp = document.getElementById('aiAdviceContent-jp');
+        
+        adviceContentEn.textContent = result.advice_en || '';
+        adviceContentJp.textContent = result.advice_jp || '';
         adviceResult.style.display = 'block';
 
         // 画面を自動スクロール
@@ -1118,5 +1121,52 @@ async function getAIAdvice() {
         // ローディング非表示
         const loadingSpinner = document.getElementById('aiAdviceLoading');
         loadingSpinner.style.display = 'none';
+    }
+}
+
+.ai-advice-result {
+    margin-top: 20px;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.advice-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 15px;
+}
+
+.advice-column {
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.advice-column h4 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e9ecef;
+}
+
+#aiAdviceContent-en, #aiAdviceContent-jp {
+    white-space: pre-wrap;
+    line-height: 1.8;
+    color: #495057;
+    font-size: 1.1em;
+}
+
+@media (max-width: 768px) {
+    .advice-columns {
+        grid-template-columns: 1fr;
+    }
+    
+    .advice-column:first-child {
+        border-bottom: 2px solid #e9ecef;
     }
 }

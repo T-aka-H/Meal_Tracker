@@ -140,30 +140,41 @@ First, formulate your thoughts in English, considering:
 - Practical and actionable suggestions
 - Encouraging and supportive tone
 
+Format your English response as:
+- 3-4 bullet points with specific advice
+- Each point should be 2-3 lines with detailed explanation
+- End with one line of encouragement
+
 Then, translate your advice into Japanese, ensuring:
 ・「です・ます」調の丁寧な言葉遣い
 ・専門家らしい説得力のある表現
 ・具体的で実践的なアドバイス
 ・温かく励ましの気持ちを込めた文章
 
-Format your Japanese response as:
-・箇条書き（・）で3-4項目のアドバイス
-・各アドバイスは2-3行の具体的な説明
-・最後に励ましの言葉を1行
+Please provide your response in the following format:
 
-例：
-・朝食をしっかり取ることで1日の代謝を上げることができます。できれば、たんぱく質を含む食品（卵、納豆、ヨーグルトなど）を取り入れてみましょう。
+[ENGLISH]
+• First advice point in English...
 
-・野菜の摂取量が少なめなので、毎食一皿は野菜料理を追加することをお勧めします。特に緑黄色野菜を意識的に取り入れることで、ビタミンやミネラルの補給ができます。
+• Second advice point in English...
 
-・夕食の時間が遅めなので、可能であれば19時までに済ませるようにしましょう。消化と睡眠の質を考えると、就寝3時間前までには食事を終えることをお勧めします。
+• Third advice point in English...
+
+Keep up the great work with your meal tracking!
+
+[JAPANESE]
+・最初のアドバイスポイント...
+
+・2つ目のアドバイスポイント...
+
+・3つ目のアドバイスポイント...
 
 毎日の食事記録、素晴らしい習慣ですね。これからも続けていきましょう！"""
 
         # Cohereを使用してアドバイスを生成
         response = cohere_client.generate(
             prompt=prompt,
-            max_tokens=500,
+            max_tokens=800,  # トークン数を増やして両言語分の出力に対応
             temperature=0.7,
             model='command',
             stop_sequences=[],
@@ -172,10 +183,30 @@ Format your Japanese response as:
 
         advice = response.generations[0].text.strip()
         
-        return jsonify({
-            'advice': advice,
-            'status': 'success'
-        })
+        # 英語と日本語のアドバイスを分割
+        try:
+            english_advice = ""
+            japanese_advice = ""
+            
+            parts = advice.split("[JAPANESE]")
+            if len(parts) == 2:
+                english_part = parts[0].split("[ENGLISH]")
+                if len(english_part) == 2:
+                    english_advice = english_part[1].strip()
+                japanese_advice = parts[1].strip()
+            
+            return jsonify({
+                'advice_en': english_advice,
+                'advice_jp': japanese_advice,
+                'status': 'success'
+            })
+        except Exception as e:
+            print(f"アドバイス分割エラー: {e}")
+            return jsonify({
+                'advice_en': advice,
+                'advice_jp': advice,
+                'status': 'success'
+            })
 
     except Exception as e:
         print(f"AIアドバイス生成エラー: {e}")
