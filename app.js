@@ -151,7 +151,7 @@ function startStatsRemovalWatcher() {
     }, 500); // 500msごとに統計情報をチェックして削除
 }
 
-// 食事記録の更新（プロキシ対応版に修正）
+// 食事記録の更新（Supabase API直接アクセス）
 async function updateMealRecord() {
     if (!editingId) return;
     
@@ -160,8 +160,8 @@ async function updateMealRecord() {
     loadingSpinner.style.display = 'inline-block';
     
     try {
-        const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?id=eq.${editingId}`, {
-            method: 'PUT',
+        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${editingId}`, {
+            method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': getSupabaseKey(),
@@ -194,10 +194,10 @@ async function updateMealRecord() {
     }
 }
 
-// 記録の編集（プロキシ対応版に修正）
+// 記録の編集（Supabase API直接アクセス）
 async function editRecord(id) {
     try {
-        const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
+        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?select=*&id=eq.${id}`, {
             method: 'GET',
             headers: {
                 'apikey': getSupabaseKey(),
@@ -237,7 +237,7 @@ async function editRecord(id) {
     }
 }
 
-// 記録の削除（プロキシ対応版に修正）
+// 記録の削除（Supabase API直接アクセス）
 function deleteRecord(id) {
     document.getElementById('confirmModal').style.display = 'block';
     document.getElementById('confirmMessage').textContent = 'この記録を削除してもよろしいですか？';
@@ -245,7 +245,7 @@ function deleteRecord(id) {
     const confirmBtn = document.getElementById('confirmBtn');
     confirmBtn.onclick = async () => {
         try {
-            const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?id=eq.${id}`, {
+            const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${id}`, {
                 method: 'DELETE',
                 headers: {
                     'apikey': getSupabaseKey(),
@@ -709,7 +709,7 @@ async function addUser() {
     }
 }
 
-// 食事記録の追加（プロキシ対応版）
+// 食事記録の追加（Supabase API直接アクセス）
 async function addMealRecord() {
     if (!currentUserId) {
         showNotification('ユーザーを選択してください', 'error');
@@ -731,7 +731,7 @@ async function addMealRecord() {
         };
         console.log('送信するデータ:', requestBody);
         
-        const response = await fetch(`${PROXY_URL}/rest/v1/meal_records`, {
+        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -765,8 +765,8 @@ async function addMealRecord() {
         showNotification('記録の追加に失敗しました: ' + error.message, 'error');
     } finally {
         if (loadingSpinner) {
-        loadingSpinner.style.display = 'none';
-    }
+            loadingSpinner.style.display = 'none';
+        }
     }
 }
 
@@ -1042,13 +1042,13 @@ function getMealFormData() {
     };
 }
 
-// 食事記録の読み込み（プロキシ対応版）
+// 食事記録の読み込み（Supabase API直接アクセス）
 async function loadMealRecords() {
     if (!currentUserId) return;
     
     try {
         const response = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
             {
                 method: 'GET',
                 headers: {
