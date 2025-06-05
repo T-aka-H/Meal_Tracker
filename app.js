@@ -585,7 +585,10 @@ function displayMealRecords(records) {
         return;
     }
     
-    recordsList.innerHTML = records.map(record => createRecordElement(record)).join('');
+    recordsList.innerHTML = '';  // 一覧をクリア
+    records.forEach(record => {
+        recordsList.appendChild(createRecordElement(record));
+    });
 }
 
 function createRecordElement(record) {
@@ -595,13 +598,13 @@ function createRecordElement(record) {
     // 日付と時間
     const dateDiv = document.createElement('div');
     dateDiv.className = 'record-date';
-    const date = new Date(record.created_at);
-    dateDiv.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+    const date = new Date(record.datetime);
+    dateDiv.textContent = `${date.toLocaleDateString('ja-JP')} ${date.toLocaleTimeString('ja-JP')}`;
     
     // 食事名
     const foodDiv = document.createElement('div');
     foodDiv.className = 'record-food';
-    foodDiv.textContent = record.food_name;
+    foodDiv.textContent = `${record.meal_type} - ${record.food_name}`;
     
     // カロリー
     const caloriesDiv = document.createElement('div');
@@ -646,9 +649,9 @@ async function updateUserStats() {
     try {
         console.log('統計更新開始');
         
-        // 最後の記録を取得
-        const lastRecordResponse = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=datetime&user_id=eq.${currentUserId}&order=datetime.desc&limit=1`,
+        // 全ての記録を取得
+        const response = await fetch(
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
             {
                 method: 'GET',
                 headers: {
@@ -659,14 +662,34 @@ async function updateUserStats() {
             }
         );
 
-        if (!lastRecordResponse.ok) {
-            throw new Error(`HTTP ${lastRecordResponse.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
         }
 
-        const lastRecords = await lastRecordResponse.json();
-        const lastRecord = lastRecords[0];
+        const records = await response.json();
         
-        // 統計を表示
+        // 総記録数
+        document.getElementById('userTotalRecords').textContent = records.length;
+        
+        // 今週の記録数
+        const today = new Date();
+        const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
+        startOfWeek.setHours(0, 0, 0, 0);
+        const thisWeekRecords = records.filter(record => {
+            const recordDate = new Date(record.datetime);
+            return recordDate >= startOfWeek;
+        });
+        document.getElementById('userThisWeekRecords').textContent = thisWeekRecords.length;
+        
+        // 平均カロリー
+        const validCalories = records.filter(r => r.calories).map(r => r.calories);
+        const avgCalories = validCalories.length > 0
+            ? Math.round(validCalories.reduce((a, b) => a + b, 0) / validCalories.length)
+            : 0;
+        document.getElementById('userAvgCalories').textContent = avgCalories;
+        
+        // 最後の記録
+        const lastRecord = records[0];
         document.getElementById('userLastMeal').textContent = lastRecord
             ? new Date(lastRecord.datetime).toLocaleDateString('ja-JP')
             : '-';
@@ -675,6 +698,10 @@ async function updateUserStats() {
         
     } catch (error) {
         console.error('統計更新エラー:', error);
+        // エラー時はデフォルト値を表示
+        document.getElementById('userTotalRecords').textContent = '0';
+        document.getElementById('userThisWeekRecords').textContent = '0';
+        document.getElementById('userAvgCalories').textContent = '0';
         document.getElementById('userLastMeal').textContent = '-';
     }
 }
