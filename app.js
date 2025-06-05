@@ -430,7 +430,6 @@ async function switchUser() {
         currentUserId = null;
         document.getElementById('mainContent').style.display = 'none';
         document.getElementById('currentUserDisplay').style.display = 'none';
-        document.getElementById('userStats').style.display = 'none';
         return;
     }
     
@@ -441,14 +440,9 @@ async function switchUser() {
         document.getElementById('mainContent').style.display = 'block';
         document.getElementById('currentUserDisplay').style.display = 'block';
         document.getElementById('currentUserName').textContent = currentUser.name;
-        document.getElementById('userStats').style.display = 'block';
         
         localStorage.setItem('lastUserId', currentUserId);
-        
-        await Promise.all([
-            loadMealRecords(),
-            updateUserStats()
-        ]);
+        await loadMealRecords();
     }
 }
 
