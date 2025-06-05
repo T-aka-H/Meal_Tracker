@@ -125,29 +125,19 @@ h1 {
 }
 
 .user-stat-card {
-    background: #ffffff;
-    padding: 20px;
-    border-radius: 12px;
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    border: 1px solid #eaeaea;
     transition: transform 0.2s ease;
 }
 
-.user-stat-card:hover {
-    transform: translateY(-2px);
-    background: #f8fafc;
-}
-
 .user-stat-number {
-    font-size: 2em;
+    font-size: 2.5em;
     font-weight: bold;
     color: #2563eb;
     margin-bottom: 8px;
 }
 
 .user-stat-label {
-    font-size: 0.9em;
+    font-size: 1em;
     color: #64748b;
     font-weight: 500;
 }
@@ -467,7 +457,7 @@ textarea {
     
     .user-stats {
         grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 20px;
     }
 }
 
@@ -483,7 +473,7 @@ textarea {
     
     .user-stats {
         grid-template-columns: 1fr;
-        gap: 10px;
+        gap: 15px;
     }
 
     .user-stat-card {

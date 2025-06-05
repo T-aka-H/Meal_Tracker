@@ -44,10 +44,7 @@ async function updateMealRecord() {
         document.getElementById('mealForm').reset();
         setDefaultDateTime();
         document.querySelector('button[type="submit"]').textContent = '📝 記録を追加';
-        await Promise.all([
-            loadMealRecords(),
-            updateUserStats()
-        ]);
+        await loadMealRecords();
         
     } catch (error) {
         console.error('記録更新エラー:', error);
@@ -123,10 +120,7 @@ function deleteRecord(id) {
             
             closeModal('confirmModal');
             showNotification('記録を削除しました', 'success');
-            await Promise.all([
-                loadMealRecords(),
-                updateUserStats()
-            ]);
+            await loadMealRecords();
             
         } catch (error) {
             console.error('記録削除エラー:', error);
@@ -164,10 +158,7 @@ function clearUserData() {
             
             closeModal('confirmModal');
             showNotification('全ての記録を削除しました', 'success');
-            await Promise.all([
-                loadMealRecords(),
-                updateUserStats()
-            ]);
+            await loadMealRecords();
             
         } catch (error) {
             console.error('データ削除エラー:', error);
@@ -662,16 +653,16 @@ function createRecordElement(record) {
     return recordDiv;
 }
 
-// ユーザー統計の更新（プロキシ対応版）
+// ユーザー統計の更新
 async function updateUserStats() {
-    if (!currentUserId) return;
-    
+    if (!currentUserId) {
+        document.getElementById('userStats').style.display = 'none';
+        return;
+    }
+
     try {
-        console.log('統計更新開始');
-        
-        // 全ての記録を取得
         const response = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}`,
             {
                 method: 'GET',
                 headers: {
@@ -683,7 +674,8 @@ async function updateUserStats() {
         );
 
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const records = await response.json();
@@ -693,8 +685,7 @@ async function updateUserStats() {
         
         // 今週の記録数
         const today = new Date();
-        const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
-        startOfWeek.setHours(0, 0, 0, 0);
+        const startOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
         const thisWeekRecords = records.filter(record => {
             const recordDate = new Date(record.datetime);
             return recordDate >= startOfWeek;
@@ -702,53 +693,23 @@ async function updateUserStats() {
         document.getElementById('userThisWeekRecords').textContent = thisWeekRecords.length;
         
         // 平均カロリー
-        const validCalories = records.filter(r => r.calories).map(r => r.calories);
+        const validCalories = records.filter(record => record.calories && !isNaN(record.calories));
         const avgCalories = validCalories.length > 0
-            ? Math.round(validCalories.reduce((a, b) => a + b, 0) / validCalories.length)
+            ? Math.round(validCalories.reduce((sum, record) => sum + record.calories, 0) / validCalories.length)
             : 0;
         document.getElementById('userAvgCalories').textContent = avgCalories;
         
         // 最後の記録
-        const lastRecord = records[0];
-        document.getElementById('userLastMeal').textContent = lastRecord
-            ? new Date(lastRecord.datetime).toLocaleDateString('ja-JP')
+        const lastRecord = records.length > 0
+            ? new Date(records[0].datetime).toLocaleDateString()
             : '-';
+        document.getElementById('userLastMeal').textContent = lastRecord;
         
-        console.log('統計更新完了');
+        document.getElementById('userStats').style.display = 'block';
         
     } catch (error) {
         console.error('統計更新エラー:', error);
-        // エラー時はデフォルト値を表示
-        document.getElementById('userTotalRecords').textContent = '0';
-        document.getElementById('userThisWeekRecords').textContent = '0';
-        document.getElementById('userAvgCalories').textContent = '0';
-        document.getElementById('userLastMeal').textContent = '-';
-    }
-}
-
-// ユーザーデータのダウンロード
-async function downloadUserData() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-    
-    try {
-        const { data, error } = await supabase
-            .from('meal_records')
-            .select('*')
-            .eq('user_id', currentUserId)
-            .order('datetime', { ascending: false });
-        
-        if (error) throw error;
-        
-        const csvContent = convertToCSV(data);
-        downloadCSV(csvContent, `meal_records_${currentUser.name}.csv`);
-        showNotification('データをダウンロードしました', 'success');
-        
-    } catch (error) {
-        console.error('データダウンロードエラー:', error);
-        showNotification('データのダウンロードに失敗しました', 'error');
+        document.getElementById('userStats').style.display = 'none';
     }
 }
 
@@ -803,41 +764,6 @@ function downloadCSV(content, filename) {
     link.download = filename;
     link.click();
     URL.revokeObjectURL(link.href);
-}
-
-// ユーザーデータの削除
-function clearUserData() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-    
-    document.getElementById('confirmModal').style.display = 'block';
-    document.getElementById('confirmMessage').textContent = 
-        'このユーザーの全ての記録を削除してもよろしいですか？この操作は取り消せません。';
-    
-    const confirmBtn = document.getElementById('confirmBtn');
-    confirmBtn.onclick = async () => {
-        try {
-            const { error } = await supabase
-                .from('meal_records')
-                .delete()
-                .eq('user_id', currentUserId);
-            
-            if (error) throw error;
-            
-            closeModal('confirmModal');
-            showNotification('全ての記録を削除しました', 'success');
-            await Promise.all([
-                loadMealRecords(),
-                updateUserStats()
-            ]);
-            
-        } catch (error) {
-            console.error('データ削除エラー:', error);
-            showNotification('データの削除に失敗しました', 'error');
-        }
-    };
 }
 
 // 通知の表示
