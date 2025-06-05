@@ -9,12 +9,11 @@ let allUsers = [];
 let supabaseInstance = null;
 
 // プロキシサーバーのURL（環境に応じて変更）
-// 1. プロキシURLの修正
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
     : 'https://meal-tracker-2-jyq6.onrender.com';  // 新しいプロキシサーバーURL
 
-// 2. 食事記録の更新（プロキシ対応版に修正）
+// 食事記録の更新（プロキシ対応版に修正）
 async function updateMealRecord() {
     if (!editingId) return;
     
@@ -54,7 +53,7 @@ async function updateMealRecord() {
     }
 }
 
-// 3. 記録の編集（プロキシ対応版に修正）
+// 記録の編集（プロキシ対応版に修正）
 async function editRecord(id) {
     try {
         const response = await fetch(`${PROXY_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
@@ -97,7 +96,7 @@ async function editRecord(id) {
     }
 }
 
-// 4. 記録の削除（プロキシ対応版に修正）
+// 記録の削除（プロキシ対応版に修正）
 function deleteRecord(id) {
     document.getElementById('confirmModal').style.display = 'block';
     document.getElementById('confirmMessage').textContent = 'この記録を削除してもよろしいですか？';
@@ -129,7 +128,7 @@ function deleteRecord(id) {
     };
 }
 
-// 5. ユーザーデータの削除（プロキシ対応版に修正）
+// ユーザーデータの削除（プロキシ対応版に修正）
 function clearUserData() {
     if (!currentUserId) {
         showNotification('ユーザーを選択してください', 'error');
@@ -167,7 +166,7 @@ function clearUserData() {
     };
 }
 
-// 6. データダウンロード機能もプロキシ対応版に修正（必要に応じて）
+// データダウンロード機能もプロキシ対応版に修正
 async function downloadUserData() {
     if (!currentUserId) {
         showNotification('ユーザーを選択してください', 'error');
@@ -216,10 +215,16 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
 
-// 初期化
+// 初期化 - 統計情報を非表示にする処理を追加
 document.addEventListener('DOMContentLoaded', function() {
     loadSupabaseConfig();
     setDefaultDateTime();
+    
+    // 統計情報セクションを完全に非表示にする
+    const userStatsElement = document.getElementById('userStats');
+    if (userStatsElement) {
+        userStatsElement.style.display = 'none';
+    }
     
     // フォームのサブミットイベントを設定
     document.getElementById('mealForm').addEventListener('submit', function(e) {
@@ -422,7 +427,7 @@ async function refreshUsers() {
     showNotification('ユーザー一覧を更新しました', 'success');
 }
 
-// ユーザーの切り替え
+// ユーザーの切り替え - 統計情報を非表示にする処理を追加
 async function switchUser() {
     const userId = document.getElementById('userSelect').value;
     if (!userId) {
@@ -430,6 +435,11 @@ async function switchUser() {
         currentUserId = null;
         document.getElementById('mainContent').style.display = 'none';
         document.getElementById('currentUserDisplay').style.display = 'none';
+        // 統計情報を非表示にする
+        const userStatsElement = document.getElementById('userStats');
+        if (userStatsElement) {
+            userStatsElement.style.display = 'none';
+        }
         return;
     }
     
@@ -440,6 +450,13 @@ async function switchUser() {
         document.getElementById('mainContent').style.display = 'block';
         document.getElementById('currentUserDisplay').style.display = 'block';
         document.getElementById('currentUserName').textContent = currentUser.name;
+        
+        // 統計情報を非表示にする
+        const userStatsElement = document.getElementById('userStats');
+        if (userStatsElement) {
+            userStatsElement.style.display = 'none';
+        }
+        
         localStorage.setItem('lastUserId', currentUserId);
         await loadMealRecords();
     }
@@ -549,10 +566,9 @@ async function addMealRecord() {
         document.getElementById('mealForm').reset();
         setDefaultDateTime();
         
-        // 記録の再読み込みと統計の更新
+        // 記録の再読み込み
         console.log('記録を再読み込みします');
         await loadMealRecords();
-        console.log('統計を更新します');
         
     } catch (error) {
         console.error('食事記録追加エラー:', error);
@@ -801,7 +817,11 @@ async function deleteUser() {
         currentUser = null;
         currentUserId = null;
         document.getElementById('currentUserDisplay').style.display = 'none';
-        document.getElementById('userStats').style.display = 'none';
+        // 統計情報を非表示にする
+        const userStatsElement = document.getElementById('userStats');
+        if (userStatsElement) {
+            userStatsElement.style.display = 'none';
+        }
         document.getElementById('mainContent').style.display = 'none';
         
         // ユーザーリストを更新
@@ -860,4 +880,4 @@ async function loadMealRecords() {
         console.error('記録読み込みエラー:', error);
         showNotification('記録の読み込みに失敗しました', 'error');
     }
-} 
+}
