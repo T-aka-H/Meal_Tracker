@@ -14,7 +14,7 @@ const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
 // プロキシサーバーのURL（環境に応じて変更）
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
-    : supabaseUrl;
+    : 'https://meal-tracker-2-jyq6.onrender.com';
 
 // 統計情報を強制削除する関数
 function forceRemoveStats() {
@@ -43,8 +43,8 @@ function forceRemoveStats() {
     statsSelectors.forEach(selector => {
         const elements = document.querySelectorAll(selector);
         elements.forEach(element => {
-            // ユーザー名表示要素は削除しない
             if (element && 
+                !element.closest('#currentUserDisplay') && // ユーザー表示の親要素をチェック
                 element.id !== 'currentUserName' && 
                 element.id !== 'currentUserDisplay') {
                 element.remove();
@@ -58,10 +58,11 @@ function forceRemoveStats() {
     allElements.forEach(element => {
         if (!element || !element.textContent) return;
         
-        // ユーザー名表示要素は削除しない
+        // ユーザー表示要素は削除しない
         if (element.id === 'currentUserName' || 
             element.id === 'currentUserDisplay' ||
-            element.closest('#currentUserDisplay')) {
+            element.closest('#currentUserDisplay') ||
+            element.closest('#userSection')) {
             return;
         }
         
@@ -104,9 +105,10 @@ function forceRemoveStats() {
                    depth < maxDepth && 
                    parentToRemove.parentNode !== document.body && 
                    parentToRemove.parentNode !== document.documentElement) {
-                // ユーザー名表示要素の親要素は削除しない
+                // ユーザー表示要素の親要素は削除しない
                 if (parentToRemove.querySelector('#currentUserName') || 
-                    parentToRemove.querySelector('#currentUserDisplay')) {
+                    parentToRemove.querySelector('#currentUserDisplay') ||
+                    parentToRemove.closest('#userSection')) {
                     return;
                 }
                 
@@ -133,7 +135,8 @@ function forceRemoveStats() {
                 parentToRemove !== document.body && 
                 parentToRemove !== document.documentElement &&
                 !parentToRemove.contains(document.getElementById('currentUserName')) &&
-                !parentToRemove.contains(document.getElementById('currentUserDisplay'))) {
+                !parentToRemove.contains(document.getElementById('currentUserDisplay')) &&
+                !parentToRemove.closest('#userSection')) {
                 parentToRemove.remove();
                 console.log(`統計情報を含む要素を削除: ${text}`);
             }
@@ -559,7 +562,8 @@ async function loadUsers() {
     try {
         console.log('ユーザー読み込み開始');
         
-        const response = await fetch(`${PROXY_URL}/rest/v1/users?order=name.asc`, {
+        // プロキシサーバー経由でリクエスト
+        const response = await fetch('/rest/v1/users?order=name.asc', {
             method: 'GET',
             headers: {
                 'apikey': getSupabaseKey(),
@@ -570,15 +574,6 @@ async function loadUsers() {
 
         console.log('Response status:', response.status);
         console.log('Response headers:', response.headers);
-
-        // レスポンスのContent-Typeをチェック
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            const text = await response.text();
-            console.error('Invalid response type:', contentType);
-            console.error('Response text:', text);
-            throw new Error(`Invalid response type: ${contentType}. Expected JSON.`);
-        }
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -593,8 +588,15 @@ async function loadUsers() {
         updateUserSelect();
         updateUserCount(users.length);
         
-        // 統計情報を削除
-        setTimeout(forceRemoveStats, 100);
+        // 最後に選択されていたユーザーを復元
+        const lastUserId = localStorage.getItem('lastUserId');
+        if (lastUserId) {
+            const userSelect = document.getElementById('userSelect');
+            if (userSelect) {
+                userSelect.value = lastUserId;
+                await switchUser();
+            }
+        }
         
     } catch (error) {
         console.error('ユーザー読み込みエラー:', error);
