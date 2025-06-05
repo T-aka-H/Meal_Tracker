@@ -11,7 +11,65 @@ let supabaseInstance = null;
 // プロキシサーバーのURL（環境に応じて変更）
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
-    : 'https://meal-tracker-2-jyq6.onrender.com';  // 新しいプロキシサーバーURL
+    : 'https://meal-tracker-2-jyq6.onrender.com';
+
+// 統計情報を強制削除する関数
+function forceRemoveStats() {
+    // 統計情報に関連する要素を全て削除
+    const statsSelectors = [
+        '#userStats',
+        '.user-stats',
+        '.stat-row',
+        '.stat-value',
+        '.stat-label',
+        '[class*="stat"]',
+        '[id*="stat"]',
+        '[class*="Stats"]',
+        '[id*="Stats"]'
+    ];
+    
+    statsSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+            if (element) {
+                element.remove();
+                console.log(`削除した要素: ${selector}`);
+            }
+        });
+    });
+    
+    // 統計情報のテキストを含む要素を削除
+    const allElements = document.querySelectorAll('*');
+    allElements.forEach(element => {
+        const text = element.textContent;
+        if (text && (
+            text.includes('総記録数') ||
+            text.includes('今週の記録') ||
+            text.includes('平均カロリー') ||
+            text.includes('最後の記録') ||
+            text.includes('2025/6/5') ||
+            (text.match(/^[0-9]+$/) && element.style.color === 'rgb(37, 99, 235)') ||
+            text === '4' || text === '300'
+        )) {
+            // 親要素も含めて削除
+            let parentToRemove = element;
+            while (parentToRemove.parentNode && parentToRemove.parentNode.children.length <= 2 && parentToRemove.parentNode !== document.body) {
+                parentToRemove = parentToRemove.parentNode;
+            }
+            if (parentToRemove && parentToRemove !== document.body && parentToRemove !== document.html) {
+                parentToRemove.remove();
+                console.log(`統計情報を含む要素を削除: ${text}`);
+            }
+        }
+    });
+}
+
+// 定期的に統計情報を削除する監視機能
+function startStatsRemovalWatcher() {
+    setInterval(() => {
+        forceRemoveStats();
+    }, 500); // 500msごとに統計情報をチェックして削除
+}
 
 // 食事記録の更新（プロキシ対応版に修正）
 async function updateMealRecord() {
@@ -45,6 +103,9 @@ async function updateMealRecord() {
         document.querySelector('button[type="submit"]').textContent = '📝 記録を追加';
         await loadMealRecords();
         
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
+        
     } catch (error) {
         console.error('記録更新エラー:', error);
         showNotification('記録の更新に失敗しました', 'error');
@@ -71,7 +132,7 @@ async function editRecord(id) {
         }
 
         const data = await response.json();
-        const record = data[0]; // 配列の最初の要素を取得
+        const record = data[0];
         
         if (!record) {
             throw new Error('記録が見つかりません');
@@ -121,6 +182,9 @@ function deleteRecord(id) {
             showNotification('記録を削除しました', 'success');
             await loadMealRecords();
             
+            // 統計情報を削除
+            setTimeout(forceRemoveStats, 100);
+            
         } catch (error) {
             console.error('記録削除エラー:', error);
             showNotification('記録の削除に失敗しました', 'error');
@@ -158,6 +222,9 @@ function clearUserData() {
             closeModal('confirmModal');
             showNotification('全ての記録を削除しました', 'success');
             await loadMealRecords();
+            
+            // 統計情報を削除
+            setTimeout(forceRemoveStats, 100);
             
         } catch (error) {
             console.error('データ削除エラー:', error);
@@ -215,16 +282,16 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
 
-// 初期化 - 統計情報を非表示にする処理を追加
+// 初期化 - 統計情報を完全に削除
 document.addEventListener('DOMContentLoaded', function() {
     loadSupabaseConfig();
     setDefaultDateTime();
     
-    // 統計情報セクションを完全に非表示にする
-    const userStatsElement = document.getElementById('userStats');
-    if (userStatsElement) {
-        userStatsElement.style.display = 'none';
-    }
+    // 統計情報を強制削除
+    forceRemoveStats();
+    
+    // 統計情報削除の監視を開始
+    startStatsRemovalWatcher();
     
     // フォームのサブミットイベントを設定
     document.getElementById('mealForm').addEventListener('submit', function(e) {
@@ -234,6 +301,27 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             addMealRecord();
         }
+    });
+});
+
+// DOMの変更を監視して統計情報を削除
+const observer = new MutationObserver((mutations) => {
+    let needsCleanup = false;
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+            needsCleanup = true;
+        }
+    });
+    if (needsCleanup) {
+        setTimeout(forceRemoveStats, 100);
+    }
+});
+
+// 監視を開始（ページ読み込み後）
+window.addEventListener('load', function() {
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
     });
 });
 
@@ -280,7 +368,7 @@ async function connectSupabase() {
         // 新しいSupabaseクライアントを作成
         supabase = window.supabase.createClient(url, key);
 
-        console.log('Supabaseクライアント作成完了'); // デバッグ用
+        console.log('Supabaseクライアント作成完了');
 
         // 最小限の接続テスト - セッションチェックのみ
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -289,7 +377,7 @@ async function connectSupabase() {
             throw new Error('認証エラー: ' + sessionError.message);
         }
 
-        console.log('認証チェック完了'); // デバッグ用
+        console.log('認証チェック完了');
 
         updateConnectionStatus(true);
         document.getElementById('setupSection').style.display = 'none';
@@ -300,6 +388,9 @@ async function connectSupabase() {
         // 設定を保存
         localStorage.setItem('supabaseUrl', url);
         localStorage.setItem('supabaseKey', key);
+        
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
         
     } catch (error) {
         console.error('Supabase接続エラー:', error);
@@ -411,6 +502,9 @@ async function loadUsers() {
         updateUserSelect();
         updateUserCount(users.length);
         
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
+        
     } catch (error) {
         console.error('ユーザー読み込みエラー:', error);
         console.error('エラーの詳細:', error.stack);
@@ -425,9 +519,12 @@ async function loadUsers() {
 async function refreshUsers() {
     await loadUsers();
     showNotification('ユーザー一覧を更新しました', 'success');
+    
+    // 統計情報を削除
+    setTimeout(forceRemoveStats, 100);
 }
 
-// ユーザーの切り替え - 統計情報を非表示にする処理を追加
+// ユーザーの切り替え
 async function switchUser() {
     const userId = document.getElementById('userSelect').value;
     if (!userId) {
@@ -435,11 +532,9 @@ async function switchUser() {
         currentUserId = null;
         document.getElementById('mainContent').style.display = 'none';
         document.getElementById('currentUserDisplay').style.display = 'none';
-        // 統計情報を非表示にする
-        const userStatsElement = document.getElementById('userStats');
-        if (userStatsElement) {
-            userStatsElement.style.display = 'none';
-        }
+        
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
         return;
     }
     
@@ -451,14 +546,11 @@ async function switchUser() {
         document.getElementById('currentUserDisplay').style.display = 'block';
         document.getElementById('currentUserName').textContent = currentUser.name;
         
-        // 統計情報を非表示にする
-        const userStatsElement = document.getElementById('userStats');
-        if (userStatsElement) {
-            userStatsElement.style.display = 'none';
-        }
-        
         localStorage.setItem('lastUserId', currentUserId);
         await loadMealRecords();
+        
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
     }
 }
 
@@ -516,6 +608,9 @@ async function addUser() {
         
         document.getElementById('newUserName').value = '';
         
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
+        
     } catch (error) {
         console.error('ユーザー追加エラー:', error);
         showNotification('ユーザーの追加に失敗しました', 'error');
@@ -570,6 +665,9 @@ async function addMealRecord() {
         console.log('記録を再読み込みします');
         await loadMealRecords();
         
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
+        
     } catch (error) {
         console.error('食事記録追加エラー:', error);
         showNotification('記録の追加に失敗しました: ' + error.message, 'error');
@@ -593,6 +691,9 @@ function displayMealRecords(records) {
         const recordElement = createRecordElement(record);
         recordsList.appendChild(recordElement);
     });
+    
+    // 統計情報を削除
+    setTimeout(forceRemoveStats, 100);
 }
 
 function createRecordElement(record) {
@@ -817,15 +918,13 @@ async function deleteUser() {
         currentUser = null;
         currentUserId = null;
         document.getElementById('currentUserDisplay').style.display = 'none';
-        // 統計情報を非表示にする
-        const userStatsElement = document.getElementById('userStats');
-        if (userStatsElement) {
-            userStatsElement.style.display = 'none';
-        }
         document.getElementById('mainContent').style.display = 'none';
         
         // ユーザーリストを更新
         await loadUsers();
+        
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
         
     } catch (error) {
         console.error('ユーザー削除エラー:', error);
@@ -875,6 +974,9 @@ async function loadMealRecords() {
 
         const records = await response.json();
         displayMealRecords(records);
+        
+        // 統計情報を削除
+        setTimeout(forceRemoveStats, 100);
         
     } catch (error) {
         console.error('記録読み込みエラー:', error);
