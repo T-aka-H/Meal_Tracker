@@ -762,20 +762,16 @@ async function addMealRecord() {
 
 // 食事記録の表示
 function displayMealRecords(records) {
-    const recordsList = document.getElementById('recordsList');
+    const recordsContainer = document.querySelector('.records-container');
+    if (!recordsContainer) return;
+
     if (!records || records.length === 0) {
-        recordsList.innerHTML = '<div class="empty-state">記録がありません</div>';
+        recordsContainer.innerHTML = '<p class="no-records">記録がありません</p>';
         return;
     }
-    
-    recordsList.innerHTML = '';
-    records.forEach(record => {
-        const recordElement = createRecordElement(record);
-        recordsList.appendChild(recordElement);
-    });
-    
-    // 統計情報を削除
-    setTimeout(forceRemoveStats, 100);
+
+    const recordsHTML = records.map(record => createRecordElement(record)).join('');
+    recordsContainer.innerHTML = recordsHTML;
 }
 
 function createRecordElement(record) {

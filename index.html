@@ -120,9 +120,20 @@
                 <button onclick="clearUserData()" class="btn btn-danger">🗑️ ユーザーデータ削除</button>
             </div>
 
-            <div class="records-section">
-                <h2>📊 記録一覧</h2>
-                <div id="recordsList"></div>
+            <div id="recordsList" class="records-section">
+                <h3>食事記録一覧</h3>
+                <div class="records-actions">
+                    <button onclick="downloadUserData()" class="action-button">
+                        <span class="icon">📥</span> CSVダウンロード
+                    </button>
+                    <button onclick="getAIAdvice()" class="action-button">
+                        <span class="icon">🤖</span> AI診断
+                    </button>
+                </div>
+                <div id="ai-advice" class="ai-advice-container"></div>
+                <div class="records-container">
+                    <!-- 記録がここに表示されます -->
+                </div>
             </div>
         </div>
     </div>
