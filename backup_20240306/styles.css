@@ -440,31 +440,4 @@ textarea {
     .btn-edit, .btn-danger {
         margin: 2px 0;
     }
-}
-
-.ai-advice-section {
-    margin: 20px 0;
-    padding: 15px;
-    background-color: #f8f9fa;
-    border-radius: 8px;
-}
-
-.ai-advice-result {
-    margin-top: 15px;
-    padding: 15px;
-    background-color: #fff;
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-
-.ai-advice-result h3 {
-    color: #2c3e50;
-    margin-bottom: 10px;
-}
-
-#aiAdviceContent {
-    white-space: pre-wrap;
-    line-height: 1.6;
-    color: #495057;
 } 

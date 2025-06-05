@@ -1,16 +1,12 @@
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response
 import requests
 import os
 from dotenv import load_dotenv
-import cohere
 
 # 環境変数の読み込み
 load_dotenv()
 
 app = Flask(__name__)
-
-# Cohereクライアントの初期化
-cohere_client = cohere.Client(os.getenv('COHERE_API_KEY'))
 
 @app.before_request
 def handle_preflight():
@@ -95,58 +91,6 @@ def proxy(path):
 @app.route('/')
 def health_check():
     return {'status': 'OK', 'message': 'Proxy server is running'}
-
-@app.route('/api/get-meal-advice', methods=['POST'])
-def get_meal_advice():
-    try:
-        data = request.json
-        meal_records = data.get('meal_records', [])
-        
-        if not meal_records:
-            return jsonify({'error': '食事記録が提供されていません'}), 400
-
-        # 食事記録を文字列にフォーマット
-        meals_text = "最近の食事記録:\n"
-        for record in meal_records:
-            meals_text += f"- {record['date']} {record['time']} {record['mealType']}: {record['foodName']}"
-            if record.get('calories'):
-                meals_text += f" ({record['calories']}kcal)"
-            meals_text += "\n"
-
-        # Cohereプロンプトの作成
-        prompt = f"""以下の食事記録を分析し、健康的な食生活のためのアドバイスを提供してください。
-カロリー、栄養バランス、食事のタイミングなどの観点から具体的なアドバイスをお願いします。
-
-{meals_text}
-
-アドバイスのポイント：
-1. 栄養バランス
-2. 食事のタイミング
-3. カロリー摂取
-4. 改善のための具体的な提案
-
-できるだけ具体的で実践的なアドバイスを日本語で提供してください。"""
-
-        # Cohereを使用してアドバイスを生成
-        response = cohere_client.generate(
-            prompt=prompt,
-            max_tokens=500,
-            temperature=0.7,
-            model='command',
-            stop_sequences=[],
-            return_likelihoods='NONE'
-        )
-
-        advice = response.generations[0].text.strip()
-        
-        return jsonify({
-            'advice': advice,
-            'status': 'success'
-        })
-
-    except Exception as e:
-        print(f"AIアドバイス生成エラー: {e}")
-        return jsonify({'error': f'アドバイスの生成に失敗しました: {str(e)}'}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
