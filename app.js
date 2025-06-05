@@ -509,9 +509,7 @@ function getSupabaseKey() {
 }
 
 function getSupabaseUrl() {
-    return localStorage.getItem('supabaseUrl') || 
-           document.getElementById('supabaseUrl')?.value || 
-           '';
+    return supabaseUrl;
 }
 
 // 接続テスト関数（プロキシ対応版）
@@ -563,8 +561,8 @@ async function loadUsers() {
     try {
         console.log('ユーザー読み込み開始');
         
-        // プロキシサーバー経由でリクエスト
-        const response = await fetch(`${PROXY_URL}/rest/v1/users?order=name.asc`, {
+        // Supabase APIに直接アクセス
+        const response = await fetch(`${supabaseUrl}/rest/v1/users?order=name.asc`, {
             method: 'GET',
             headers: {
                 'apikey': getSupabaseKey(),
