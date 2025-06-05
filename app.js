@@ -1076,8 +1076,43 @@ async function loadMealRecords() {
 }
 
 async function getAIAdvice() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+
     try {
-        const response = await fetch('/api/get-meal-advice', {
+        // ローディング表示
+        const adviceElement = document.getElementById('ai-advice');
+        if (adviceElement) {
+            adviceElement.innerHTML = '<div class="loading">AIアドバイスを生成中...</div>';
+        }
+
+        // 最新の食事記録を取得
+        const recordsResponse = await fetch(
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!recordsResponse.ok) {
+            throw new Error(`食事記録の取得に失敗しました: ${recordsResponse.status}`);
+        }
+
+        const mealRecords = await recordsResponse.json();
+        
+        if (!mealRecords || mealRecords.length === 0) {
+            throw new Error('食事記録が見つかりません');
+        }
+
+        // AIアドバイスを取得
+        const adviceResponse = await fetch('/api/get-meal-advice', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1087,14 +1122,13 @@ async function getAIAdvice() {
             })
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+        if (!adviceResponse.ok) {
+            throw new Error(`AIアドバイスの取得に失敗しました: ${adviceResponse.status}`);
         }
 
-        const data = await response.json();
+        const data = await adviceResponse.json();
         
         // アドバイスを表示
-        const adviceElement = document.getElementById('ai-advice');
         if (adviceElement) {
             adviceElement.innerHTML = `
                 <div class="advice-section">
@@ -1114,7 +1148,8 @@ async function getAIAdvice() {
         console.error('AIアドバイスエラー:', error);
         const adviceElement = document.getElementById('ai-advice');
         if (adviceElement) {
-            adviceElement.innerHTML = '<p class="error">申し訳ありません。アドバイスの取得中にエラーが発生しました。</p>';
+            adviceElement.innerHTML = `<p class="error">申し訳ありません。アドバイスの取得中にエラーが発生しました。<br>${error.message}</p>`;
         }
+        showNotification(error.message, 'error');
     }
 }
