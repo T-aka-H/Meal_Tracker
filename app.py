@@ -108,24 +108,28 @@ def get_meal_advice():
         # 食事記録を文字列にフォーマット
         meals_text = "最近の食事記録:\n"
         for record in meal_records:
-            meals_text += f"- {record['date']} {record['time']} {record['mealType']}: {record['foodName']}"
+            datetime = record['datetime']
+            meals_text += f"- {datetime[:10]} {datetime[11:16]} {record['meal_type']}: {record['food_name']}"
             if record.get('calories'):
                 meals_text += f" ({record['calories']}kcal)"
+            if record.get('location'):
+                meals_text += f" @ {record['location']}"
             meals_text += "\n"
 
         # Cohereプロンプトの作成
-        prompt = f"""以下の食事記録を分析し、健康的な食生活のためのアドバイスを提供してください。
+        prompt = f"""あなたは栄養士のアシスタントです。以下の食事記録を分析し、健康的な食生活のためのアドバイスを提供してください。
 カロリー、栄養バランス、食事のタイミングなどの観点から具体的なアドバイスをお願いします。
 
 {meals_text}
 
-アドバイスのポイント：
-1. 栄養バランス
-2. 食事のタイミング
-3. カロリー摂取
+以下の点に注目してアドバイスを提供してください：
+1. 食事のタイミングと頻度
+2. カロリー摂取の適切性
+3. 栄養バランスの分析
 4. 改善のための具体的な提案
 
-できるだけ具体的で実践的なアドバイスを日本語で提供してください。"""
+できるだけ具体的で実践的なアドバイスを、優しい口調で日本語で提供してください。
+アドバイスは箇条書きで、3-4項目程度にまとめてください。"""
 
         # Cohereを使用してアドバイスを生成
         response = cohere_client.generate(
