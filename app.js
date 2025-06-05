@@ -448,11 +448,19 @@ async function connectSupabase() {
         // 新しいSupabaseクライアントを作成
         supabase = window.supabase.createClient(url, key);
 
-        // 最小限の接続テスト - セッションチェックのみ
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-            throw new Error('認証エラー: ' + sessionError.message);
+        // 接続テスト - 直接Supabaseにリクエスト
+        const response = await fetch(`${url}/rest/v1/users?limit=1`, {
+            method: 'GET',
+            headers: {
+                'apikey': key,
+                'Authorization': `Bearer ${key}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`接続テストに失敗: ${response.status} - ${errorText}`);
         }
 
         // 接続成功時の処理
