@@ -25,7 +25,16 @@ function forceRemoveStats() {
         '[class*="stat"]',
         '[id*="stat"]',
         '[class*="Stats"]',
-        '[id*="Stats"]'
+        '[id*="Stats"]',
+        '.statistics',
+        '.statistics-container',
+        '.user-statistics',
+        '.stats-wrapper',
+        '.stats-container',
+        '.stats-grid',
+        '.stats-box',
+        '[class*="statistics"]',
+        '[id*="statistics"]'
     ];
     
     statsSelectors.forEach(selector => {
@@ -41,22 +50,68 @@ function forceRemoveStats() {
     // 統計情報のテキストを含む要素を削除
     const allElements = document.querySelectorAll('*');
     allElements.forEach(element => {
-        const text = element.textContent;
-        if (text && (
-            text.includes('総記録数') ||
-            text.includes('今週の記録') ||
-            text.includes('平均カロリー') ||
-            text.includes('最後の記録') ||
-            text.includes('2025/6/5') ||
-            (text.match(/^[0-9]+$/) && element.style.color === 'rgb(37, 99, 235)') ||
-            text === '4' || text === '300'
-        )) {
+        if (!element || !element.textContent) return;
+        
+        const text = element.textContent.trim();
+        // 統計情報に関連する文字列パターン
+        const statsPatterns = [
+            '総記録数',
+            '今週の記録',
+            '平均カロリー',
+            '最後の記録',
+            '統計',
+            '集計',
+            '件数',
+            '合計'
+        ];
+        
+        // 数値のみの要素で、特定のスタイルが適用されているもの
+        const isStyledNumber = text.match(/^[0-9]+$/) && 
+            element.style && 
+            element.style.color === 'rgb(37, 99, 235)';
+            
+        // 統計情報らしき数値パターン
+        const isStatsNumber = (
+            /^[0-9]+件$/.test(text) ||
+            /^[0-9]+kcal$/.test(text) ||
+            text === '4' ||
+            text === '300'
+        );
+        
+        if (statsPatterns.some(pattern => text.includes(pattern)) || 
+            isStyledNumber || 
+            isStatsNumber) {
+            
             // 親要素も含めて削除
             let parentToRemove = element;
-            while (parentToRemove.parentNode && parentToRemove.parentNode.children.length <= 2 && parentToRemove.parentNode !== document.body) {
+            let depth = 0;
+            const maxDepth = 5; // 最大5階層まで遡る
+            
+            while (parentToRemove.parentNode && 
+                   depth < maxDepth && 
+                   parentToRemove.parentNode !== document.body && 
+                   parentToRemove.parentNode !== document.documentElement) {
+                // 親要素に他の重要な要素が含まれていないかチェック
+                const siblings = Array.from(parentToRemove.parentNode.children);
+                const hasCriticalSibling = siblings.some(sibling => {
+                    return sibling !== parentToRemove && (
+                        sibling.classList.contains('records-section') ||
+                        sibling.classList.contains('form-section') ||
+                        sibling.classList.contains('user-section') ||
+                        sibling.id === 'mealForm' ||
+                        sibling.id === 'recordsList'
+                    );
+                });
+                
+                if (hasCriticalSibling) break;
+                
                 parentToRemove = parentToRemove.parentNode;
+                depth++;
             }
-            if (parentToRemove && parentToRemove !== document.body && parentToRemove !== document.html) {
+            
+            if (parentToRemove && 
+                parentToRemove !== document.body && 
+                parentToRemove !== document.documentElement) {
                 parentToRemove.remove();
                 console.log(`統計情報を含む要素を削除: ${text}`);
             }
