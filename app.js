@@ -537,6 +537,12 @@ async function addMealRecord() {
     try {
         console.log('食事記録追加開始:', record);
         
+        const requestBody = {
+            ...record,
+            user_id: currentUserId
+        };
+        console.log('送信するデータ:', requestBody);
+
         const response = await fetch(`${PROXY_URL}/rest/v1/meal_records`, {
             method: 'POST',
             headers: {
@@ -546,10 +552,7 @@ async function addMealRecord() {
                 'Accept': 'application/json',
                 'prefer': 'return=minimal'
             },
-            body: JSON.stringify({
-                ...record,
-                user_id: currentUserId
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -561,10 +564,12 @@ async function addMealRecord() {
         showNotification('記録を追加しました', 'success');
         document.getElementById('mealForm').reset();
         setDefaultDateTime();
-        await Promise.all([
-            loadMealRecords(),
-            updateUserStats()
-        ]);
+        
+        // 記録の再読み込みと統計の更新
+        console.log('記録を再読み込みします');
+        await loadMealRecords();
+        console.log('統計を更新します');
+        await updateUserStats();
         
     } catch (error) {
         console.error('食事記録追加エラー:', error);
@@ -578,6 +583,7 @@ async function addMealRecord() {
 
 // 食事記録の表示
 function displayMealRecords(records) {
+    console.log('表示する記録:', records);
     const recordsList = document.getElementById('recordsList');
     
     if (!records || records.length === 0) {
@@ -585,59 +591,73 @@ function displayMealRecords(records) {
         return;
     }
     
-    recordsList.innerHTML = '';  // 一覧をクリア
-    records.forEach(record => {
-        recordsList.appendChild(createRecordElement(record));
-    });
+    try {
+        recordsList.innerHTML = '';  // 一覧をクリア
+        records.forEach(record => {
+            const element = createRecordElement(record);
+            console.log('作成された要素:', element);
+            recordsList.appendChild(element);
+        });
+    } catch (error) {
+        console.error('記録表示エラー:', error);
+        recordsList.innerHTML = '<div class="empty-state">記録の表示中にエラーが発生しました</div>';
+    }
 }
 
 function createRecordElement(record) {
+    console.log('記録要素を作成:', record);
     const recordDiv = document.createElement('div');
     recordDiv.className = 'record-item';
 
-    // 日付と時間
-    const dateDiv = document.createElement('div');
-    dateDiv.className = 'record-date';
-    const date = new Date(record.datetime);
-    dateDiv.textContent = `${date.toLocaleDateString('ja-JP')} ${date.toLocaleTimeString('ja-JP')}`;
-    
-    // 食事名
-    const foodDiv = document.createElement('div');
-    foodDiv.className = 'record-food';
-    foodDiv.textContent = `${record.meal_type} - ${record.food_name}`;
-    
-    // カロリー
-    const caloriesDiv = document.createElement('div');
-    caloriesDiv.className = 'record-calories';
-    caloriesDiv.textContent = record.calories ? `${record.calories} kcal` : '-';
-    
-    // 場所
-    const locationDiv = document.createElement('div');
-    locationDiv.className = 'record-location';
-    locationDiv.textContent = record.location || '-';
-    
-    // アクション
-    const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'record-actions';
-    
-    const editButton = document.createElement('button');
-    editButton.className = 'btn btn-secondary btn-small';
-    editButton.textContent = '編集';
-    editButton.onclick = () => editRecord(record.id);
-    
-    const deleteButton = document.createElement('button');
-    deleteButton.className = 'btn btn-danger btn-small';
-    deleteButton.textContent = '削除';
-    deleteButton.onclick = () => deleteRecord(record.id);
-    
-    actionsDiv.appendChild(editButton);
-    actionsDiv.appendChild(deleteButton);
-    
-    recordDiv.appendChild(dateDiv);
-    recordDiv.appendChild(foodDiv);
-    recordDiv.appendChild(caloriesDiv);
-    recordDiv.appendChild(locationDiv);
-    recordDiv.appendChild(actionsDiv);
+    try {
+        // 日付と時間
+        const dateDiv = document.createElement('div');
+        dateDiv.className = 'record-date';
+        const date = new Date(record.datetime);
+        dateDiv.textContent = `${date.toLocaleDateString('ja-JP')} ${date.toLocaleTimeString('ja-JP')}`;
+        
+        // 食事名
+        const foodDiv = document.createElement('div');
+        foodDiv.className = 'record-food';
+        foodDiv.textContent = `${record.meal_type} - ${record.food_name}`;
+        
+        // カロリー
+        const caloriesDiv = document.createElement('div');
+        caloriesDiv.className = 'record-calories';
+        caloriesDiv.textContent = record.calories ? `${record.calories} kcal` : '-';
+        
+        // 場所
+        const locationDiv = document.createElement('div');
+        locationDiv.className = 'record-location';
+        locationDiv.textContent = record.location || '-';
+        
+        // アクション
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'record-actions';
+        
+        const editButton = document.createElement('button');
+        editButton.className = 'btn btn-secondary btn-small';
+        editButton.textContent = '編集';
+        editButton.onclick = () => editRecord(record.id);
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'btn btn-danger btn-small';
+        deleteButton.textContent = '削除';
+        deleteButton.onclick = () => deleteRecord(record.id);
+        
+        actionsDiv.appendChild(editButton);
+        actionsDiv.appendChild(deleteButton);
+        
+        recordDiv.appendChild(dateDiv);
+        recordDiv.appendChild(foodDiv);
+        recordDiv.appendChild(caloriesDiv);
+        recordDiv.appendChild(locationDiv);
+        recordDiv.appendChild(actionsDiv);
+        
+    } catch (error) {
+        console.error('記録要素作成エラー:', error);
+        recordDiv.textContent = 'エラー: 記録の表示に失敗しました';
+    }
     
     return recordDiv;
 }
@@ -963,23 +983,28 @@ function getMealFormData() {
 
 // 食事記録の読み込み（プロキシ対応版）
 async function loadMealRecords() {
-    if (!currentUserId) return;
+    if (!currentUserId) {
+        console.log('ユーザーが選択されていません');
+        return;
+    }
     
     try {
-        console.log('食事記録読み込み開始');
+        console.log('食事記録読み込み開始 - ユーザーID:', currentUserId);
         
-        const response = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
-                }
+        const url = `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`;
+        console.log('リクエストURL:', url);
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'Accept': 'application/json'
             }
-        );
+        });
 
+        console.log('レスポンスステータス:', response.status);
+        
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Response error:', errorText);
@@ -987,12 +1012,18 @@ async function loadMealRecords() {
         }
 
         const data = await response.json();
-        console.log('食事記録読み込み成功:', data);
+        console.log('取得したデータ:', data);
+        
+        if (!Array.isArray(data)) {
+            console.error('予期しないデータ形式:', data);
+            throw new Error('サーバーから予期しないデータ形式が返されました');
+        }
         
         displayMealRecords(data);
         
     } catch (error) {
         console.error('食事記録読み込みエラー:', error);
-        showNotification('記録の読み込みに失敗しました', 'error');
+        showNotification('記録の読み込みに失敗しました: ' + error.message, 'error');
+        displayMealRecords([]); // エラー時は空の配列を表示
     }
 } 
