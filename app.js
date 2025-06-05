@@ -11,7 +11,7 @@ let supabaseInstance = null;
 // プロキシサーバーのURL（環境に応じて変更）
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
-    : 'https://meal-tracker-2-jyq6.onrender.com';
+    : 'https://meal-tracker-1-y2dy.onrender.com';
 
 // 統計情報を強制削除する関数
 function forceRemoveStats() {
