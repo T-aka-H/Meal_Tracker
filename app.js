@@ -553,7 +553,6 @@ async function addMealRecord() {
         console.log('記録を再読み込みします');
         await loadMealRecords();
         console.log('統計を更新します');
-        await updateUserStats();
         
     } catch (error) {
         console.error('食事記録追加エラー:', error);
@@ -644,66 +643,6 @@ function createRecordElement(record) {
     }
     
     return recordDiv;
-}
-
-// ユーザー統計の更新
-async function updateUserStats() {
-    if (!currentUserId) {
-        document.getElementById('userStats').style.display = 'none';
-        return;
-    }
-
-    try {
-        const response = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const records = await response.json();
-        
-        // 総記録数
-        document.getElementById('userTotalRecords').textContent = records.length;
-        
-        // 今週の記録数
-        const today = new Date();
-        const startOfWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - today.getDay());
-        const thisWeekRecords = records.filter(record => {
-            const recordDate = new Date(record.datetime);
-            return recordDate >= startOfWeek;
-        });
-        document.getElementById('userThisWeekRecords').textContent = thisWeekRecords.length;
-        
-        // 平均カロリー
-        const validCalories = records.filter(record => record.calories && !isNaN(record.calories));
-        const avgCalories = validCalories.length > 0
-            ? Math.round(validCalories.reduce((sum, record) => sum + record.calories, 0) / validCalories.length)
-            : 0;
-        document.getElementById('userAvgCalories').textContent = avgCalories;
-        
-        // 最後の記録
-        const lastRecord = records.length > 0
-            ? new Date(records[0].datetime).toLocaleDateString()
-            : '-';
-        document.getElementById('userLastMeal').textContent = lastRecord;
-        
-        document.getElementById('userStats').style.display = 'block';
-        
-    } catch (error) {
-        console.error('統計更新エラー:', error);
-        document.getElementById('userStats').style.display = 'none';
-    }
 }
 
 // 全ユーザーデータのダウンロード
