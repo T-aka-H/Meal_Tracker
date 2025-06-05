@@ -423,8 +423,6 @@ async function connectSupabase() {
         // 新しいSupabaseクライアントを作成
         supabase = window.supabase.createClient(url, key);
 
-        console.log('Supabaseクライアント作成完了');
-
         // 最小限の接続テスト - セッションチェックのみ
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
@@ -432,11 +430,23 @@ async function connectSupabase() {
             throw new Error('認証エラー: ' + sessionError.message);
         }
 
-        console.log('認証チェック完了');
+        // 接続成功時の処理
+        const status = document.getElementById('connectionStatus');
+        if (status) {
+            status.className = 'status connected';
+            status.textContent = '✅ Supabaseに接続済み';
+        }
 
-        updateConnectionStatus(true);
-        document.getElementById('setupSection').style.display = 'none';
-        document.getElementById('userSection').style.display = 'block';
+        const setupSection = document.getElementById('setupSection');
+        if (setupSection) {
+            setupSection.style.display = 'none';
+        }
+
+        const userSection = document.getElementById('userSection');
+        if (userSection) {
+            userSection.style.display = 'block';
+        }
+
         await loadUsers();
         showNotification('Supabaseに接続しました！', 'success');
         
@@ -444,14 +454,16 @@ async function connectSupabase() {
         localStorage.setItem('supabaseUrl', url);
         localStorage.setItem('supabaseKey', key);
         
-        // 統計情報を削除
-        setTimeout(forceRemoveStats, 100);
-        
     } catch (error) {
         console.error('Supabase接続エラー:', error);
         const errorMessage = error.message || error.error_description || 'Unknown error';
         showNotification('接続に失敗しました: ' + errorMessage, 'error');
-        updateConnectionStatus(false);
+        
+        const status = document.getElementById('connectionStatus');
+        if (status) {
+            status.className = 'status disconnected';
+            status.textContent = '❌ 接続に失敗しました。設定を確認してください。';
+        }
         
         // エラーの詳細をコンソールに出力
         if (error.status) {
@@ -509,6 +521,8 @@ async function testConnection() {
 // 接続状態の更新
 function updateConnectionStatus(connected) {
     const status = document.getElementById('connectionStatus');
+    if (!status) return;
+    
     if (connected) {
         status.className = 'status connected';
         status.textContent = '✅ Supabaseに接続済み';
