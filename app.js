@@ -568,95 +568,6 @@ async function addMealRecord() {
     }
 }
 
-// 食事記録の更新
-async function updateMealRecord() {
-    if (!editingId) return;
-    
-    const record = getMealFormData();
-    const loadingSpinner = document.getElementById('addLoading');
-    loadingSpinner.style.display = 'inline-block';
-    
-    try {
-        const { error } = await supabase
-            .from('meal_records')
-            .update(record)
-            .eq('id', editingId);
-        
-        if (error) throw error;
-        
-        showNotification('記録を更新しました', 'success');
-        editingId = null;
-        document.getElementById('mealForm').reset();
-        setDefaultDateTime();
-        document.querySelector('button[type="submit"]').textContent = '📝 記録を追加';
-        await Promise.all([
-            loadMealRecords(),
-            updateUserStats()
-        ]);
-        
-    } catch (error) {
-        console.error('記録更新エラー:', error);
-        showNotification('記録の更新に失敗しました', 'error');
-    } finally {
-        loadingSpinner.style.display = 'none';
-    }
-}
-
-// フォームデータの取得
-function getMealFormData() {
-    const date = document.getElementById('date').value;
-    const time = document.getElementById('time').value;
-    const datetime = new Date(`${date}T${time}`).toISOString();
-    
-    return {
-        datetime,
-        meal_type: document.getElementById('mealType').value,
-        food_name: document.getElementById('foodName').value,
-        calories: parseInt(document.getElementById('calories').value) || null,
-        location: document.getElementById('location').value,
-        notes: document.getElementById('notes').value
-    };
-}
-
-// 食事記録の読み込み（プロキシ対応版）
-async function loadMealRecords() {
-    if (!currentUserId) return;
-    
-    try {
-        console.log('食事記録読み込み開始');
-        
-        const response = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Response error:', errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        console.log('食事記録読み込み成功:', data);
-        
-        displayMealRecords(data);
-        
-    } catch (error) {
-        console.error('食事記録読み込みエラー:', error);
-        showNotification('記録の読み込みに失敗しました', 'error');
-    }
-}
-
 // 食事記録の表示
 function displayMealRecords(records) {
     const recordsList = document.getElementById('recordsList');
@@ -666,112 +577,58 @@ function displayMealRecords(records) {
         return;
     }
     
-    recordsList.innerHTML = records.map(record => `
-        <div class="record-item">
-            <div class="record-header">
-                <div class="record-date">
-                    ${new Date(record.datetime).toLocaleString('ja-JP', {
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })}
-                </div>
-                <div class="record-actions">
-                    <button onclick="editRecord(${record.id})" class="btn btn-edit">✏️ 編集</button>
-                    <button onclick="deleteRecord(${record.id})" class="btn btn-danger">🗑️ 削除</button>
-                </div>
-            </div>
-            <div class="record-details">
-                <div class="record-field">
-                    <strong>食事タイプ</strong>
-                    ${record.meal_type}
-                </div>
-                <div class="record-field">
-                    <strong>料理名</strong>
-                    ${record.food_name}
-                </div>
-                ${record.calories ? `
-                <div class="record-field">
-                    <strong>カロリー</strong>
-                    ${record.calories} kcal
-                </div>
-                ` : ''}
-                ${record.location ? `
-                <div class="record-field">
-                    <strong>場所</strong>
-                    ${record.location}
-                </div>
-                ` : ''}
-            </div>
-            ${record.notes ? `
-            <div class="record-field">
-                <strong>メモ</strong>
-                ${record.notes}
-            </div>
-            ` : ''}
-        </div>
-    `).join('');
+    recordsList.innerHTML = records.map(record => createRecordElement(record)).join('');
 }
 
-// 記録の編集
-async function editRecord(id) {
-    try {
-        const { data, error } = await supabase
-            .from('meal_records')
-            .select('*')
-            .eq('id', id)
-            .single();
-        
-        if (error) throw error;
-        
-        const datetime = new Date(data.datetime);
-        document.getElementById('date').value = datetime.toISOString().split('T')[0];
-        document.getElementById('time').value = datetime.toTimeString().slice(0, 5);
-        document.getElementById('mealType').value = data.meal_type;
-        document.getElementById('foodName').value = data.food_name;
-        document.getElementById('calories').value = data.calories || '';
-        document.getElementById('location').value = data.location || '';
-        document.getElementById('notes').value = data.notes || '';
-        
-        editingId = id;
-        document.querySelector('button[type="submit"]').textContent = '✏️ 記録を更新';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-    } catch (error) {
-        console.error('記録編集エラー:', error);
-        showNotification('記録の読み込みに失敗しました', 'error');
-    }
-}
+function createRecordElement(record) {
+    const recordDiv = document.createElement('div');
+    recordDiv.className = 'record-item';
 
-// 記録の削除
-function deleteRecord(id) {
-    document.getElementById('confirmModal').style.display = 'block';
-    document.getElementById('confirmMessage').textContent = 'この記録を削除してもよろしいですか？';
+    // 日付と時間
+    const dateDiv = document.createElement('div');
+    dateDiv.className = 'record-date';
+    const date = new Date(record.created_at);
+    dateDiv.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     
-    const confirmBtn = document.getElementById('confirmBtn');
-    confirmBtn.onclick = async () => {
-        try {
-            const { error } = await supabase
-                .from('meal_records')
-                .delete()
-                .eq('id', id);
-            
-            if (error) throw error;
-            
-            closeModal('confirmModal');
-            showNotification('記録を削除しました', 'success');
-            await Promise.all([
-                loadMealRecords(),
-                updateUserStats()
-            ]);
-            
-        } catch (error) {
-            console.error('記録削除エラー:', error);
-            showNotification('記録の削除に失敗しました', 'error');
-        }
-    };
+    // 食事名
+    const foodDiv = document.createElement('div');
+    foodDiv.className = 'record-food';
+    foodDiv.textContent = record.food_name;
+    
+    // カロリー
+    const caloriesDiv = document.createElement('div');
+    caloriesDiv.className = 'record-calories';
+    caloriesDiv.textContent = record.calories ? `${record.calories} kcal` : '-';
+    
+    // 場所
+    const locationDiv = document.createElement('div');
+    locationDiv.className = 'record-location';
+    locationDiv.textContent = record.location || '-';
+    
+    // アクション
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'record-actions';
+    
+    const editButton = document.createElement('button');
+    editButton.className = 'btn btn-secondary btn-small';
+    editButton.textContent = '編集';
+    editButton.onclick = () => editRecord(record.id);
+    
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'btn btn-danger btn-small';
+    deleteButton.textContent = '削除';
+    deleteButton.onclick = () => deleteRecord(record.id);
+    
+    actionsDiv.appendChild(editButton);
+    actionsDiv.appendChild(deleteButton);
+    
+    recordDiv.appendChild(dateDiv);
+    recordDiv.appendChild(foodDiv);
+    recordDiv.appendChild(caloriesDiv);
+    recordDiv.appendChild(locationDiv);
+    recordDiv.appendChild(actionsDiv);
+    
+    return recordDiv;
 }
 
 // ユーザー統計の更新（プロキシ対応版）
