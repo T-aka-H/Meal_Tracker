@@ -529,6 +529,10 @@ async function addMealRecord() {
     }
     
     const record = getMealFormData();
+    const loadingSpinner = document.getElementById('addLoading');
+    if (loadingSpinner) {
+        loadingSpinner.style.display = 'inline-block';
+    }
     
     try {
         console.log('食事記録追加開始:', record);
@@ -564,7 +568,11 @@ async function addMealRecord() {
         
     } catch (error) {
         console.error('食事記録追加エラー:', error);
-        showNotification('記録の追加に失敗しました', 'error');
+        showNotification('記録の追加に失敗しました: ' + error.message, 'error');
+    } finally {
+        if (loadingSpinner) {
+            loadingSpinner.style.display = 'none';
+        }
     }
 }
 
@@ -908,4 +916,20 @@ async function deleteUser() {
     } finally {
         loadingSpinner.style.display = 'none';
     }
+}
+
+// フォームデータの取得
+function getMealFormData() {
+    const date = document.getElementById('date').value;
+    const time = document.getElementById('time').value;
+    const datetime = new Date(`${date}T${time}`).toISOString();
+    
+    return {
+        datetime,
+        meal_type: document.getElementById('mealType').value,
+        food_name: document.getElementById('foodName').value,
+        calories: parseInt(document.getElementById('calories').value) || null,
+        location: document.getElementById('location').value,
+        notes: document.getElementById('notes').value
+    };
 } 
