@@ -80,7 +80,7 @@ def proxy(path):
             headers=headers,
             data=data,
             timeout=30,
-            verify=True  # SSL証明書の検証を有効化
+            verify=False  # SSL証明書の検証をスキップ
         )
         
         print(f"Response status: {response.status_code}")
