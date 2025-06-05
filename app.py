@@ -3,11 +3,13 @@ import requests
 import os
 from dotenv import load_dotenv
 import cohere
+from flask_cors import CORS
 
 # 環境変数の読み込み
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # CORSを有効化
 
 # Cohereクライアントの初期化
 cohere_client = cohere.Client(os.getenv('COHERE_API_KEY'))
@@ -92,12 +94,11 @@ def proxy(path):
         print(f"Proxy Error: {e}")
         return {'error': f'Internal server error: {str(e)}'}, 500
 
-@app.route('/')
-def health_check():
-    return {'status': 'OK', 'message': 'Proxy server is running'}
-
-@app.route('/api/get-meal-advice', methods=['POST'])
+@app.route('/api/get-meal-advice', methods=['POST', 'OPTIONS'])
 def get_meal_advice():
+    if request.method == "OPTIONS":
+        return '', 204
+        
     try:
         data = request.json
         meal_records = data.get('meal_records', [])
@@ -151,6 +152,10 @@ def get_meal_advice():
     except Exception as e:
         print(f"AIアドバイス生成エラー: {e}")
         return jsonify({'error': f'アドバイスの生成に失敗しました: {str(e)}'}), 500
+
+@app.route('/')
+def health_check():
+    return {'status': 'OK', 'message': 'Proxy server is running'}
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))

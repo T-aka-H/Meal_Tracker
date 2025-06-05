@@ -1096,7 +1096,8 @@ async function getAIAdvice() {
         });
 
         if (!aiResponse.ok) {
-            throw new Error('AIアドバイスの取得に失敗しました');
+            const errorText = await aiResponse.text();
+            throw new Error(`AIアドバイスの取得に失敗しました: ${errorText}`);
         }
 
         const result = await aiResponse.json();
