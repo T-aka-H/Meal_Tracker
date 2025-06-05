@@ -438,17 +438,10 @@ async function connectSupabase() {
     }
 
     try {
-        // URLの末尾のスラッシュを削除
         url = url.replace(/\/$/, '');
-
-        // 古いクライアントインスタンスをクリア
-        supabase = null;
-        supabaseInstance = null;
-
-        // 新しいSupabaseクライアントを作成
         supabase = window.supabase.createClient(url, key);
 
-        // 接続テスト - 直接Supabaseにリクエスト
+        // ここはSupabase本体に直接アクセス
         const response = await fetch(`${url}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
@@ -739,7 +732,7 @@ async function addMealRecord() {
             user_id: currentUserId
         };
         console.log('送信するデータ:', requestBody);
-
+        
         const response = await fetch(`${PROXY_URL}/rest/v1/meal_records`, {
             method: 'POST',
             headers: {
@@ -774,8 +767,8 @@ async function addMealRecord() {
         showNotification('記録の追加に失敗しました: ' + error.message, 'error');
     } finally {
         if (loadingSpinner) {
-            loadingSpinner.style.display = 'none';
-        }
+        loadingSpinner.style.display = 'none';
+    }
     }
 }
 
@@ -1033,7 +1026,7 @@ async function deleteUser() {
     } finally {
         loadingSpinner.style.display = 'none';
     }
-}
+} 
 
 // フォームデータの取得
 function getMealFormData() {
