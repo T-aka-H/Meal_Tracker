@@ -1060,15 +1060,24 @@ async function getAIAdvice() {
         loadingSpinner.style.display = 'inline-block';
         
         // 最新の10件の食事記録を取得
-        const { data: records, error } = await supabase
-            .from('meals')
-            .select('*')
-            .eq('user_id', currentUserId)
-            .order('date', { ascending: false })
-            .order('time', { ascending: false })
-            .limit(10);
+        const response = await fetch(
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
 
-        if (error) throw error;
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const records = await response.json();
 
         if (!records || records.length === 0) {
             showNotification('食事記録が見つかりません。', 'error');
@@ -1076,19 +1085,21 @@ async function getAIAdvice() {
         }
 
         // AIアドバイスを取得
-        const response = await fetch('/api/get-meal-advice', {
+        const aiResponse = await fetch(`${PROXY_URL}/api/get-meal-advice`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`
             },
             body: JSON.stringify({ meal_records: records })
         });
 
-        if (!response.ok) {
+        if (!aiResponse.ok) {
             throw new Error('AIアドバイスの取得に失敗しました');
         }
 
-        const result = await response.json();
+        const result = await aiResponse.json();
         
         // アドバイスを表示
         const adviceResult = document.getElementById('aiAdviceResult');
