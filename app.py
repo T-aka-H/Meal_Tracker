@@ -1,29 +1,12 @@
-from flask import Flask, request, Response, jsonify
+from flask import Flask, request, Response
 import requests
 import os
 from dotenv import load_dotenv
-import cohere
-from flask_cors import CORS
 
 # 環境変数の読み込み
 load_dotenv()
 
 app = Flask(__name__)
-# CORSの設定を更新
-CORS(app, resources={
-    r"/*": {
-        "origins": [
-            "https://meal-tracker-1-y2dy.onrender.com",
-            "http://localhost:5000",
-            "http://127.0.0.1:5000"
-        ],
-        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "apikey", "prefer"]
-    }
-})
-
-# Cohereクライアントの初期化
-cohere_client = cohere.Client(os.getenv('COHERE_API_KEY'))
 
 @app.before_request
 def handle_preflight():
@@ -104,124 +87,6 @@ def proxy(path):
     except Exception as e:
         print(f"Proxy Error: {e}")
         return {'error': f'Internal server error: {str(e)}'}, 500
-
-@app.route('/api/get-meal-advice', methods=['POST', 'OPTIONS'])
-def get_meal_advice():
-    if request.method == "OPTIONS":
-        return '', 204
-        
-    try:
-        data = request.json
-        meal_records = data.get('meal_records', [])
-        
-        if not meal_records:
-            return jsonify({'error': '食事記録が提供されていません'}), 400
-
-        # 食事記録を文字列にフォーマット
-        meals_text = "最近の食事記録:\n"
-        for record in meal_records:
-            datetime = record['datetime']
-            meals_text += f"- {datetime[:10]} {datetime[11:16]} {record['meal_type']}: {record['food_name']}"
-            if record.get('calories'):
-                meals_text += f" ({record['calories']}kcal)"
-            if record.get('location'):
-                meals_text += f" @ {record['location']}"
-            meals_text += "\n"
-
-        # Cohereプロンプトの作成
-        prompt = f"""You are a registered dietitian who can speak both English and Japanese, but you are more comfortable thinking in English first.
-
-Please analyze the following meal records and provide health advice in the following two steps:
-
-Step 1: First, think and formulate your advice in English
-Step 2: Then translate your thoughts into natural, professional Japanese
-
-Recent meal records:
-{meals_text}
-
-Please focus on the following points:
-1. Meal timing and frequency
-2. Calorie intake appropriateness
-3. Nutritional balance analysis
-4. Specific suggestions for improvement
-
-First, formulate your thoughts in English, considering:
-- Professional dietary advice
-- Scientific reasoning
-- Practical and actionable suggestions
-- Encouraging and supportive tone
-
-Format your English response as:
-- 3-4 bullet points with specific advice
-- Each point should be 2-3 lines with detailed explanation
-- End with one line of encouragement
-
-Then, translate your advice into Japanese, ensuring:
-・「です・ます」調の丁寧な言葉遣い
-・専門家らしい説得力のある表現
-・具体的で実践的なアドバイス
-・温かく励ましの気持ちを込めた文章
-
-Please provide your response in the following format:
-
-[ENGLISH]
-• First advice point in English...
-
-• Second advice point in English...
-
-• Third advice point in English...
-
-Keep up the great work with your meal tracking!
-
-[JAPANESE]
-・最初のアドバイスポイント...
-
-・2つ目のアドバイスポイント...
-
-・3つ目のアドバイスポイント...
-
-毎日の食事記録、素晴らしい習慣ですね。これからも続けていきましょう！"""
-
-        # Cohereを使用してアドバイスを生成
-        response = cohere_client.generate(
-            prompt=prompt,
-            max_tokens=800,  # トークン数を増やして両言語分の出力に対応
-            temperature=0.7,
-            model='command',
-            stop_sequences=[],
-            return_likelihoods='NONE'
-        )
-
-        advice = response.generations[0].text.strip()
-        
-        # 英語と日本語のアドバイスを分割
-        try:
-            english_advice = ""
-            japanese_advice = ""
-            
-            parts = advice.split("[JAPANESE]")
-            if len(parts) == 2:
-                english_part = parts[0].split("[ENGLISH]")
-                if len(english_part) == 2:
-                    english_advice = english_part[1].strip()
-                japanese_advice = parts[1].strip()
-            
-            return jsonify({
-                'advice_en': english_advice,
-                'advice_jp': japanese_advice,
-                'status': 'success'
-            })
-        except Exception as e:
-            print(f"アドバイス分割エラー: {e}")
-            return jsonify({
-                'advice_en': advice,
-                'advice_jp': advice,
-                'status': 'success'
-            })
-
-    except Exception as e:
-        print(f"AIアドバイス生成エラー: {e}")
-        return jsonify({'error': f'アドバイスの生成に失敗しました: {str(e)}'}), 500
 
 @app.route('/')
 def health_check():

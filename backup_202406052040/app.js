@@ -732,13 +732,22 @@ async function addMealRecord() {
         };
         console.log('送信するデータ:', requestBody);
         
-        const { data, error } = await supabase
-            .from('meal_records')
-            .insert([requestBody]);
+        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'Accept': 'application/json',
+                'prefer': 'return=minimal'
+            },
+            body: JSON.stringify(requestBody)
+        });
 
-        if (error) {
-            console.error('Response error:', error);
-            throw new Error(`記録の追加に失敗しました: ${error.message}`);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         showNotification('記録を追加しました', 'success');

@@ -62,6 +62,28 @@
 
         <!-- メインコンテンツ -->
         <div id="mainContent" style="display: none;">
+            <!-- AIアドバイスセクション -->
+            <div class="ai-advice-section">
+                <h2> AIアドバイス</h2>
+                <button onclick="getAIAdvice()" class="btn btn-primary">
+                    <span class="loading" id="aiAdviceLoading" style="display: none;"></span>
+                    AIアドバイスを取得
+                </button>
+                <div id="aiAdviceResult" class="ai-advice-result" style="display: none;">
+                    <h3>AIからのアドバイス</h3>
+                    <div class="advice-columns">
+                        <div class="advice-column">
+                            <h4>English Advice</h4>
+                            <div id="aiAdviceContent-en"></div>
+                        </div>
+                        <div class="advice-column">
+                            <h4>日本語アドバイス</h4>
+                            <div id="aiAdviceContent-jp"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-section">
                 <h2>✨ 新しい食事記録を追加</h2>
                 <form id="mealForm">
