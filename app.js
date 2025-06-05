@@ -440,7 +440,6 @@ async function switchUser() {
         document.getElementById('mainContent').style.display = 'block';
         document.getElementById('currentUserDisplay').style.display = 'block';
         document.getElementById('currentUserName').textContent = currentUser.name;
-        
         localStorage.setItem('lastUserId', currentUserId);
         await loadMealRecords();
     }
