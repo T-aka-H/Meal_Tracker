@@ -40,7 +40,10 @@ function forceRemoveStats() {
     statsSelectors.forEach(selector => {
         const elements = document.querySelectorAll(selector);
         elements.forEach(element => {
-            if (element) {
+            // ユーザー名表示要素は削除しない
+            if (element && 
+                element.id !== 'currentUserName' && 
+                element.id !== 'currentUserDisplay') {
                 element.remove();
                 console.log(`削除した要素: ${selector}`);
             }
@@ -51,6 +54,13 @@ function forceRemoveStats() {
     const allElements = document.querySelectorAll('*');
     allElements.forEach(element => {
         if (!element || !element.textContent) return;
+        
+        // ユーザー名表示要素は削除しない
+        if (element.id === 'currentUserName' || 
+            element.id === 'currentUserDisplay' ||
+            element.closest('#currentUserDisplay')) {
+            return;
+        }
         
         const text = element.textContent.trim();
         // 統計情報に関連する文字列パターン
@@ -91,6 +101,12 @@ function forceRemoveStats() {
                    depth < maxDepth && 
                    parentToRemove.parentNode !== document.body && 
                    parentToRemove.parentNode !== document.documentElement) {
+                // ユーザー名表示要素の親要素は削除しない
+                if (parentToRemove.querySelector('#currentUserName') || 
+                    parentToRemove.querySelector('#currentUserDisplay')) {
+                    return;
+                }
+                
                 // 親要素に他の重要な要素が含まれていないかチェック
                 const siblings = Array.from(parentToRemove.parentNode.children);
                 const hasCriticalSibling = siblings.some(sibling => {
@@ -99,7 +115,8 @@ function forceRemoveStats() {
                         sibling.classList.contains('form-section') ||
                         sibling.classList.contains('user-section') ||
                         sibling.id === 'mealForm' ||
-                        sibling.id === 'recordsList'
+                        sibling.id === 'recordsList' ||
+                        sibling.id === 'currentUserDisplay'
                     );
                 });
                 
@@ -111,7 +128,9 @@ function forceRemoveStats() {
             
             if (parentToRemove && 
                 parentToRemove !== document.body && 
-                parentToRemove !== document.documentElement) {
+                parentToRemove !== document.documentElement &&
+                !parentToRemove.contains(document.getElementById('currentUserName')) &&
+                !parentToRemove.contains(document.getElementById('currentUserDisplay'))) {
                 parentToRemove.remove();
                 console.log(`統計情報を含む要素を削除: ${text}`);
             }
