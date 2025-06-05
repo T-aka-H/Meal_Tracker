@@ -566,25 +566,17 @@ async function addMealRecord() {
 
 // 食事記録の表示
 function displayMealRecords(records) {
-    console.log('表示する記録:', records);
     const recordsList = document.getElementById('recordsList');
-    
     if (!records || records.length === 0) {
         recordsList.innerHTML = '<div class="empty-state">記録がありません</div>';
         return;
     }
     
-    try {
-        recordsList.innerHTML = '';  // 一覧をクリア
-        records.forEach(record => {
-            const element = createRecordElement(record);
-            console.log('作成された要素:', element);
-            recordsList.appendChild(element);
-        });
-    } catch (error) {
-        console.error('記録表示エラー:', error);
-        recordsList.innerHTML = '<div class="empty-state">記録の表示中にエラーが発生しました</div>';
-    }
+    recordsList.innerHTML = '';
+    records.forEach(record => {
+        const recordElement = createRecordElement(record);
+        recordsList.appendChild(recordElement);
+    });
 }
 
 function createRecordElement(record) {
@@ -841,47 +833,31 @@ function getMealFormData() {
 
 // 食事記録の読み込み（プロキシ対応版）
 async function loadMealRecords() {
-    if (!currentUserId) {
-        console.log('ユーザーが選択されていません');
-        return;
-    }
+    if (!currentUserId) return;
     
     try {
-        console.log('食事記録読み込み開始 - ユーザーID:', currentUserId);
-        
-        const url = `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`;
-        console.log('リクエストURL:', url);
-        
-        const response = await fetch(url, {
-            method: 'GET',
-            headers: {
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`,
-                'Accept': 'application/json'
+        const response = await fetch(
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json'
+                }
             }
-        });
+        );
 
-        console.log('レスポンスステータス:', response.status);
-        
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Response error:', errorText);
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
-        const data = await response.json();
-        console.log('取得したデータ:', data);
-        
-        if (!Array.isArray(data)) {
-            console.error('予期しないデータ形式:', data);
-            throw new Error('サーバーから予期しないデータ形式が返されました');
-        }
-        
-        displayMealRecords(data);
+        const records = await response.json();
+        displayMealRecords(records);
         
     } catch (error) {
-        console.error('食事記録読み込みエラー:', error);
-        showNotification('記録の読み込みに失敗しました: ' + error.message, 'error');
-        displayMealRecords([]); // エラー時は空の配列を表示
+        console.error('記録読み込みエラー:', error);
+        showNotification('記録の読み込みに失敗しました', 'error');
     }
 } 

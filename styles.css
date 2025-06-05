@@ -117,31 +117,6 @@ h1 {
     margin-bottom: 10px;
 }
 
-.user-stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 15px;
-    margin: 20px 0;
-}
-
-.user-stat-card {
-    text-align: center;
-    transition: transform 0.2s ease;
-}
-
-.user-stat-number {
-    font-size: 2.5em;
-    font-weight: bold;
-    color: #2563eb;
-    margin-bottom: 8px;
-}
-
-.user-stat-label {
-    font-size: 1em;
-    color: #64748b;
-    font-weight: 500;
-}
-
 .form-section {
     background: #ffffff;
     padding: 20px;
@@ -454,11 +429,6 @@ textarea {
         width: 95%;
         padding: 20px;
     }
-    
-    .user-stats {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 20px;
-    }
 }
 
 @media (max-width: 480px) {
@@ -469,14 +439,5 @@ textarea {
     
     .btn-edit, .btn-danger {
         margin: 2px 0;
-    }
-    
-    .user-stats {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
-
-    .user-stat-card {
-        padding: 15px;
     }
 } 
