@@ -118,19 +118,47 @@ def get_meal_advice():
             meals_text += "\n"
 
         # Cohereプロンプトの作成
-        prompt = f"""あなたは栄養士のアシスタントです。以下の食事記録を分析し、健康的な食生活のためのアドバイスを提供してください。
-カロリー、栄養バランス、食事のタイミングなどの観点から具体的なアドバイスをお願いします。
+        prompt = f"""You are a registered dietitian who can speak both English and Japanese, but you are more comfortable thinking in English first.
 
+Please analyze the following meal records and provide health advice in the following two steps:
+
+Step 1: First, think and formulate your advice in English
+Step 2: Then translate your thoughts into natural, professional Japanese
+
+Recent meal records:
 {meals_text}
 
-以下の点に注目してアドバイスを提供してください：
-1. 食事のタイミングと頻度
-2. カロリー摂取の適切性
-3. 栄養バランスの分析
-4. 改善のための具体的な提案
+Please focus on the following points:
+1. Meal timing and frequency
+2. Calorie intake appropriateness
+3. Nutritional balance analysis
+4. Specific suggestions for improvement
 
-できるだけ具体的で実践的なアドバイスを、優しい口調で日本語で提供してください。
-アドバイスは箇条書きで、3-4項目程度にまとめてください。"""
+First, formulate your thoughts in English, considering:
+- Professional dietary advice
+- Scientific reasoning
+- Practical and actionable suggestions
+- Encouraging and supportive tone
+
+Then, translate your advice into Japanese, ensuring:
+・「です・ます」調の丁寧な言葉遣い
+・専門家らしい説得力のある表現
+・具体的で実践的なアドバイス
+・温かく励ましの気持ちを込めた文章
+
+Format your Japanese response as:
+・箇条書き（・）で3-4項目のアドバイス
+・各アドバイスは2-3行の具体的な説明
+・最後に励ましの言葉を1行
+
+例：
+・朝食をしっかり取ることで1日の代謝を上げることができます。できれば、たんぱく質を含む食品（卵、納豆、ヨーグルトなど）を取り入れてみましょう。
+
+・野菜の摂取量が少なめなので、毎食一皿は野菜料理を追加することをお勧めします。特に緑黄色野菜を意識的に取り入れることで、ビタミンやミネラルの補給ができます。
+
+・夕食の時間が遅めなので、可能であれば19時までに済ませるようにしましょう。消化と睡眠の質を考えると、就寝3時間前までには食事を終えることをお勧めします。
+
+毎日の食事記録、素晴らしい習慣ですね。これからも続けていきましょう！"""
 
         # Cohereを使用してアドバイスを生成
         response = cohere_client.generate(
