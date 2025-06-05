@@ -512,7 +512,7 @@ async function testConnection() {
     try {
         console.log('接続テスト開始');
         
-        const response = await fetch('http://localhost:8080/rest/v1/users?limit=1', {
+        const response = await fetch(`${PROXY_URL}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
                 'apikey': getSupabaseKey(),
