@@ -1077,71 +1077,44 @@ async function loadMealRecords() {
 
 async function getAIAdvice() {
     try {
-        // ローディング表示
-        const loadingSpinner = document.getElementById('aiAdviceLoading');
-        loadingSpinner.style.display = 'inline-block';
-        
-        // 最新の10件の食事記録を取得
-        const response = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const records = await response.json();
-
-        if (!records || records.length === 0) {
-            showNotification('食事記録が見つかりません。', 'error');
-            return;
-        }
-
-        // AIアドバイスを取得
-        const aiResponse = await fetch(`${PROXY_URL}/api/get-meal-advice`, {
+        const response = await fetch('/api/get-meal-advice', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`
             },
-            body: JSON.stringify({ meal_records: records })
+            body: JSON.stringify({
+                meal_records: mealRecords
+            })
         });
 
-        if (!aiResponse.ok) {
-            const errorText = await aiResponse.text();
-            throw new Error(`AIアドバイスの取得に失敗しました: ${errorText}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const result = await aiResponse.json();
+        const data = await response.json();
         
         // アドバイスを表示
-        const adviceResult = document.getElementById('aiAdviceResult');
-        const adviceContentEn = document.getElementById('aiAdviceContent-en');
-        const adviceContentJp = document.getElementById('aiAdviceContent-jp');
-        
-        adviceContentEn.textContent = result.advice_en || '';
-        adviceContentJp.textContent = result.advice_jp || '';
-        adviceResult.style.display = 'block';
-
-        // 画面を自動スクロール
-        adviceResult.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
+        const adviceElement = document.getElementById('ai-advice');
+        if (adviceElement) {
+            adviceElement.innerHTML = `
+                <div class="advice-section">
+                    <h4>AI Dietary Advice</h4>
+                    <div class="advice-content">
+                        <div class="japanese-advice">
+                            ${data.advice_jp.split('\n').join('<br>')}
+                        </div>
+                        <div class="english-advice">
+                            ${data.advice_en.split('\n').join('<br>')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     } catch (error) {
         console.error('AIアドバイスエラー:', error);
-        showNotification(error.message || 'AIアドバイスの取得中にエラーが発生しました', 'error');
-    } finally {
-        // ローディング非表示
-        const loadingSpinner = document.getElementById('aiAdviceLoading');
-        loadingSpinner.style.display = 'none';
+        const adviceElement = document.getElementById('ai-advice');
+        if (adviceElement) {
+            adviceElement.innerHTML = '<p class="error">申し訳ありません。アドバイスの取得中にエラーが発生しました。</p>';
+        }
     }
 }

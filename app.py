@@ -9,7 +9,18 @@ from flask_cors import CORS
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)  # CORSを有効化
+# CORSの設定を更新
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://meal-tracker-1-y2dy.onrender.com",
+            "http://localhost:5000",
+            "http://127.0.0.1:5000"
+        ],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "apikey", "prefer"]
+    }
+})
 
 # Cohereクライアントの初期化
 cohere_client = cohere.Client(os.getenv('COHERE_API_KEY'))
