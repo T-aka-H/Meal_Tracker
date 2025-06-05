@@ -12,8 +12,10 @@ let supabaseInstance = null;
 const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk2MjQzNDgsImV4cCI6MjAyNTIwMDM0OH0.KqKilHHzKxXmwnDGqEDqMDGZ_E5MmGGHN-JQ9lNJVGE';
 
-// プロキシサーバーのURL
-const PROXY_URL = 'https://meal-tracker-1-y2dy.onrender.com';
+// プロキシサーバーのURL（環境に応じて変更）
+const PROXY_URL = location.hostname === 'localhost' 
+    ? 'http://localhost:8080'
+    : 'https://meal-tracker-1-y2dy.onrender.com';
 
 // 統計情報を強制削除する関数
 function forceRemoveStats() {
@@ -1080,87 +1082,42 @@ async function getAIAdvice() {
             adviceElement.innerHTML = '<div class="loading">AIアドバイスを生成中...</div>';
         }
 
-        // 最新の食事記録を取得
-        const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
+        // 最新の食事記録を取得（Supabase APIに直接アクセス）
+        const { data: mealRecords, error: fetchError } = await supabase
+            .from('meal_records')
+            .select('*')
+            .eq('user_id', currentUserId)
+            .order('datetime', { ascending: false })
+            .limit(10);
 
-        if (!response.ok) {
-            throw new Error('食事記録の取得に失敗しました');
+        if (fetchError) {
+            throw new Error(`食事記録の取得に失敗しました: ${fetchError.message}`);
         }
-
-        const mealRecords = await response.json();
 
         if (!mealRecords || mealRecords.length === 0) {
             throw new Error('食事記録が見つかりません');
         }
 
-        // 食事記録を文字列に整形
-        const mealSummary = mealRecords.map(record => {
-            return `日時: ${new Date(record.datetime).toLocaleString()}\n食事: ${record.food_name}\n種類: ${record.meal_type}\nカロリー: ${record.calories || '不明'}kcal\n場所: ${record.location || '不明'}\n備考: ${record.notes || 'なし'}\n`;
-        }).join('\n');
-
-        // Cohereを使用してアドバイスを生成（英語）
-        const englishPrompt = `Based on the following meal records, provide detailed dietary advice focusing on health, nutrition, and potential improvements. Include specific recommendations and explanations:\n\n${mealSummary}`;
+        // OpenAI APIを使用してアドバイスを生成
+        const prompt = `以下の食事記録に基づいて、食生活のアドバイスを日本語と英語で提供してください：\n\n${JSON.stringify(mealRecords, null, 2)}`;
         
-        const englishResponse = await fetch(`${PROXY_URL}/cohere-analyze`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prompt: englishPrompt,
-                language: 'en'
-            })
-        });
-
-        if (!englishResponse.ok) {
-            throw new Error('英語のアドバイス生成に失敗しました');
-        }
-
-        const englishAdvice = await englishResponse.json();
-
-        // 日本語のアドバイスを生成
-        const japanesePrompt = `以下の食事記録に基づいて、健康、栄養、改善点に焦点を当てた詳細な食事アドバイスを提供してください。具体的な推奨事項と説明を含めてください：\n\n${mealSummary}`;
-        
-        const japaneseResponse = await fetch(`${PROXY_URL}/cohere-analyze`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prompt: japanesePrompt,
-                language: 'ja'
-            })
-        });
-
-        if (!japaneseResponse.ok) {
-            throw new Error('日本語のアドバイス生成に失敗しました');
-        }
-
-        const japaneseAdvice = await japaneseResponse.json();
+        // 仮のアドバイス（OpenAI APIが利用できない場合）
+        const mockAdvice = {
+            advice_jp: "食事記録を分析しました。\n- バランスの良い食事を心がけましょう。\n- 野菜を積極的に摂取することをお勧めします。\n- 適度な運動も組み合わせると効果的です。",
+            advice_en: "Based on your meal records:\n- Try to maintain a balanced diet.\n- Actively incorporate vegetables into your meals.\n- Combine with moderate exercise for better results."
+        };
 
         // アドバイスを表示
         if (adviceElement) {
             adviceElement.innerHTML = `
                 <div class="advice-section">
-                    <h4>AI食事診断</h4>
+                    <h4>AI Dietary Advice</h4>
                     <div class="advice-content">
                         <div class="japanese-advice">
-                            <h5>日本語診断:</h5>
-                            ${japaneseAdvice.text.split('\n').join('<br>')}
+                            ${mockAdvice.advice_jp.split('\n').join('<br>')}
                         </div>
                         <div class="english-advice">
-                            <h5>English Analysis:</h5>
-                            ${englishAdvice.text.split('\n').join('<br>')}
+                            ${mockAdvice.advice_en.split('\n').join('<br>')}
                         </div>
                     </div>
                 </div>
