@@ -14,7 +14,7 @@ const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
 // プロキシサーバーのURL（環境に応じて変更）
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
-    : 'https://meal-tracker-2-jyq6.onrender.com';
+    : 'https://meal-tracker-1-y2dy.onrender.com';
 
 // 統計情報を強制削除する関数
 function forceRemoveStats() {
@@ -1122,10 +1122,12 @@ async function getAIAdvice() {
         }
 
         // AIアドバイスを取得
-        const adviceResponse = await fetch('/api/get-meal-advice', {
+        const adviceResponse = await fetch(`${PROXY_URL}/api/get-meal-advice`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`
             },
             body: JSON.stringify({
                 meal_records: mealRecords
@@ -1133,7 +1135,8 @@ async function getAIAdvice() {
         });
 
         if (!adviceResponse.ok) {
-            throw new Error(`AIアドバイスの取得に失敗しました: ${adviceResponse.status}`);
+            const errorText = await adviceResponse.text();
+            throw new Error(`AIアドバイスの取得に失敗しました: ${errorText}`);
         }
 
         const data = await adviceResponse.json();
