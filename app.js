@@ -8,10 +8,13 @@ let allUsers = [];
 // Supabaseクライアントのシングルトンインスタンス
 let supabaseInstance = null;
 
+// Supabase設定
+const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
+
 // プロキシサーバーのURL（環境に応じて変更）
 const PROXY_URL = location.hostname === 'localhost' 
     ? 'http://localhost:8080'
-    : 'https://meal-tracker-1-y2dy.onrender.com';
+    : supabaseUrl;
 
 // 統計情報を強制削除する関数
 function forceRemoveStats() {
