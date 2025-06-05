@@ -932,4 +932,40 @@ function getMealFormData() {
         location: document.getElementById('location').value,
         notes: document.getElementById('notes').value
     };
+}
+
+// 食事記録の読み込み（プロキシ対応版）
+async function loadMealRecords() {
+    if (!currentUserId) return;
+    
+    try {
+        console.log('食事記録読み込み開始');
+        
+        const response = await fetch(
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('食事記録読み込み成功:', data);
+        
+        displayMealRecords(data);
+        
+    } catch (error) {
+        console.error('食事記録読み込みエラー:', error);
+        showNotification('記録の読み込みに失敗しました', 'error');
+    }
 } 
