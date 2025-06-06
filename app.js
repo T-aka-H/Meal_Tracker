@@ -78,20 +78,46 @@ function setDefaultDateTime() {
     }
 }
 
-// Supabaseへの接続
+// Supabaseへの接続（デバッグ版）
 async function connectSupabase() {
     try {
-        console.log('Supabase接続開始...');
+        console.log('🔄 Supabase接続開始...');
+        console.log('📍 接続先URL:', supabaseUrl);
+        console.log('🔑 APIキー（最初の20文字）:', SUPABASE_ANON_KEY.substring(0, 20) + '...');
+        console.log('🔑 APIキー（最後の10文字）:', '...' + SUPABASE_ANON_KEY.substring(SUPABASE_ANON_KEY.length - 10));
+        
+        // APIキーの有効期限をチェック
+        try {
+            const payload = JSON.parse(atob(SUPABASE_ANON_KEY.split('.')[1]));
+            console.log('📅 APIキー有効期限:', new Date(payload.exp * 1000));
+            console.log('📅 現在時刻:', new Date());
+            console.log('✅ APIキー有効:', payload.exp * 1000 > Date.now());
+        } catch (e) {
+            console.warn('⚠️ APIキーのペイロード解析に失敗:', e.message);
+        }
         
         // Supabaseクライアントを作成
         if (window.supabase && window.supabase.createClient) {
             supabase = window.supabase.createClient(supabaseUrl, SUPABASE_ANON_KEY);
-            console.log('Supabaseクライアント作成成功');
+            console.log('✅ Supabaseクライアント作成成功');
         } else {
             throw new Error('Supabase SDKが読み込まれていません');
         }
 
-        // 接続テスト - 直接Supabase APIを使用
+        // まず、プロジェクトの基本情報を取得してみる
+        console.log('🔄 プロジェクト情報取得テスト...');
+        const healthResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
+            method: 'GET',
+            headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+            }
+        });
+        
+        console.log('🏥 ヘルスチェックレスポンス:', healthResponse.status);
+        
+        // 接続テスト - usersテーブル
+        console.log('🔄 usersテーブル接続テスト開始...');
         const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
@@ -102,13 +128,29 @@ async function connectSupabase() {
             }
         });
 
-        console.log('接続テストレスポンス:', response.status);
+        console.log('📊 接続テストレスポンス:', response.status);
+        console.log('📊 レスポンスヘッダー:', Object.fromEntries(response.headers));
 
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('接続テストエラー詳細:', errorText);
+            console.error('❌ 接続テストエラー詳細:', errorText);
+            
+            // より詳細なエラー情報
+            if (response.status === 401) {
+                console.error('🔑 認証エラー: APIキーまたは権限の問題');
+                console.log('💡 確認事項:');
+                console.log('   1. Supabaseダッシュボードでプロジェクトが有効か');
+                console.log('   2. RLSポリシーが正しく設定されているか');
+                console.log('   3. APIキーが最新のものか');
+            } else if (response.status === 404) {
+                console.error('📋 テーブルが見つからない: usersテーブルが存在しない可能性');
+            }
+            
             throw new Error(`接続テストに失敗: ${response.status} - ${errorText}`);
         }
+
+        const data = await response.json();
+        console.log('📊 取得データ:', data);
 
         // 接続成功時の処理
         const userSection = document.getElementById('userSection');
@@ -122,7 +164,12 @@ async function connectSupabase() {
         return true;
 
     } catch (error) {
-        console.error('Supabase接続エラー:', error);
+        console.error('❌ Supabase接続エラー:', error);
+        console.log('🔍 エラー詳細:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+        });
         showNotification(`Supabaseへの接続に失敗しました: ${error.message}`, 'error');
         updateConnectionStatus(false);
         return false;
@@ -622,292 +669,4 @@ async function updateMealRecord() {
     if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
     
     try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${editingId}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`,
-                'prefer': 'return=minimal'
-            },
-            body: JSON.stringify(record)
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        
-        showNotification('記録を更新しました', 'success');
-        editingId = null;
-        const form = document.getElementById('mealForm');
-        if (form) form.reset();
-        setDefaultDateTime();
-        const submitBtn = document.querySelector('button[type="submit"]');
-        if (submitBtn) submitBtn.textContent = '📝 記録を追加';
-        await loadMealRecords();
-        
-        setTimeout(forceRemoveStats, 100);
-        
-    } catch (error) {
-        console.error('記録更新エラー:', error);
-        showNotification('記録の更新に失敗しました', 'error');
-    } finally {
-        if (loadingSpinner) loadingSpinner.style.display = 'none';
-    }
-}
-
-// 記録の削除
-function deleteRecord(id) {
-    const modal = document.getElementById('confirmModal');
-    const message = document.getElementById('confirmMessage');
-    if (modal) modal.style.display = 'block';
-    if (message) message.textContent = 'この記録を削除してもよろしいですか？';
-    
-    const confirmBtn = document.getElementById('confirmBtn');
-    if (confirmBtn) {
-        confirmBtn.onclick = async () => {
-            try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': getSupabaseKey(),
-                        'Authorization': `Bearer ${getSupabaseKey()}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                closeModal('confirmModal');
-                showNotification('記録を削除しました', 'success');
-                await loadMealRecords();
-                
-                setTimeout(forceRemoveStats, 100);
-                
-            } catch (error) {
-                console.error('記録削除エラー:', error);
-                showNotification('記録の削除に失敗しました', 'error');
-            }
-        };
-    }
-}
-
-// ユーザーデータの削除
-function clearUserData() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-    
-    const modal = document.getElementById('confirmModal');
-    const message = document.getElementById('confirmMessage');
-    if (modal) modal.style.display = 'block';
-    if (message) {
-        message.textContent = 'このユーザーの全ての記録を削除してもよろしいですか？この操作は取り消せません。';
-    }
-    
-    const confirmBtn = document.getElementById('confirmBtn');
-    if (confirmBtn) {
-        confirmBtn.onclick = async () => {
-            try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': getSupabaseKey(),
-                        'Authorization': `Bearer ${getSupabaseKey()}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                closeModal('confirmModal');
-                showNotification('全ての記録を削除しました', 'success');
-                await loadMealRecords();
-                
-                setTimeout(forceRemoveStats, 100);
-                
-            } catch (error) {
-                console.error('データ削除エラー:', error);
-                showNotification('データの削除に失敗しました', 'error');
-            }
-        };
-    }
-}
-
-// データダウンロード機能
-async function downloadUserData() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-    
-    try {
-        const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        
-        const csvContent = convertToCSV(data);
-        downloadCSV(csvContent, `meal_records_${currentUser.name}.csv`);
-        showNotification('データをダウンロードしました', 'success');
-        
-    } catch (error) {
-        console.error('データダウンロードエラー:', error);
-        showNotification('データのダウンロードに失敗しました', 'error');
-    }
-}
-
-// ユーザーの更新
-async function refreshUsers() {
-    await loadUsers();
-    showNotification('ユーザー一覧を更新しました', 'success');
-    setTimeout(forceRemoveStats, 100);
-}
-
-// CSVへの変換
-function convertToCSV(data) {
-    if (data.length === 0) return '';
-    
-    const headers = Object.keys(data[0]);
-    const rows = [
-        headers.join(','),
-        ...data.map(row =>
-            headers.map(header => {
-                const value = row[header];
-                return value === null ? '' : JSON.stringify(value);
-            }).join(',')
-        )
-    ];
-    
-    return rows.join('\n');
-}
-
-// CSVのダウンロード
-function downloadCSV(content, filename) {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(link.href);
-}
-
-// 通知の表示
-function showNotification(message, type = 'default') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease forwards';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// イベントリスナーの設定
-function setupEventListeners() {
-    // フォームのサブミットイベント
-    const mealForm = document.getElementById('mealForm');
-    if (mealForm) {
-        mealForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (editingId) {
-                updateMealRecord();
-            } else {
-                addMealRecord();
-            }
-        });
-    }
-
-    // ウィンドウクリックイベント（モーダル閉じる）
-    window.onclick = function(event) {
-        const modals = document.getElementsByClassName('modal');
-        for (const modal of modals) {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        }
-    };
-
-    // Enterキーでユーザー追加
-    const newUserName = document.getElementById('newUserName');
-    if (newUserName) {
-        newUserName.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addUser();
-            }
-        });
-    }
-}
-
-// 初期化
-async function initialize() {
-    console.log('アプリケーション初期化開始');
-    
-    // デフォルト日時設定
-    setDefaultDateTime();
-    
-    // 統計情報削除
-    forceRemoveStats();
-    startStatsRemovalWatcher();
-    
-    // イベントリスナー設定
-    setupEventListeners();
-    
-    // Supabase接続
-    const connected = await connectSupabase();
-    if (!connected) {
-        console.error('Supabase接続に失敗しました');
-        return;
-    }
-    
-    console.log('アプリケーション初期化完了');
-}
-
-// DOMContentLoaded イベント
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM読み込み完了');
-    initialize();
-});
-
-// DOMの変更を監視して統計情報を削除
-const observer = new MutationObserver((mutations) => {
-    let needsCleanup = false;
-    mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-            needsCleanup = true;
-        }
-    });
-    if (needsCleanup) {
-        setTimeout(forceRemoveStats, 100);
-    }
-});
-
-// 監視を開始（ページ読み込み後）
-window.addEventListener('load', function() {
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-});
+        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq
