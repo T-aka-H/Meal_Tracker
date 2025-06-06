@@ -289,35 +289,46 @@ def get_cohere_diagnosis(prompt, api_key):
     logger.debug(f'生成されたプロンプト: {prompt}')
     logger.info('COHERE APIにリクエスト送信')
 
-    cohere_response = requests.post(
-        'https://api.cohere.ai/v1/generate',
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-        json={
-            'model': 'command',
-            'prompt': prompt,
-            'max_tokens': 800,
-            'temperature': 0.7,
-            'k': 0,
-            'stop_sequences': [],
-            'return_likelihoods': 'NONE'
-        },
-        timeout=30
-    )
+    try:
+        cohere_response = requests.post(
+            'https://api.cohere.ai/v1/generate',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            json={
+                'model': 'command',
+                'prompt': prompt,
+                'max_tokens': 800,
+                'temperature': 0.7,
+                'k': 0,
+                'stop_sequences': [],
+                'return_likelihoods': 'NONE'
+            },
+            timeout=60  # タイムアウトを60秒に延長
+        )
 
-    logger.debug(f'COHERE APIレスポンス: {cohere_response.status_code}')
-    logger.debug(f'COHERE APIレスポンス内容: {cohere_response.text[:200]}...')
+        logger.debug(f'COHERE APIレスポンス: {cohere_response.status_code}')
+        logger.debug(f'COHERE APIレスポンス内容: {cohere_response.text[:200]}...')
 
-    if cohere_response.status_code != 200:
-        error_msg = f"COHERE API エラー: {cohere_response.status_code}"
-        logger.error(f"{error_msg}: {cohere_response.text}")
-        raise Exception(error_msg)
+        if cohere_response.status_code != 200:
+            error_msg = f"COHERE API エラー: {cohere_response.status_code}"
+            logger.error(f"{error_msg}: {cohere_response.text}")
+            raise Exception(error_msg)
 
-    cohere_data = cohere_response.json()
-    return cohere_data['generations'][0]['text'].strip()
+        cohere_data = cohere_response.json()
+        return cohere_data['generations'][0]['text'].strip()
+
+    except requests.exceptions.Timeout:
+        logger.error('COHERE API タイムアウト')
+        raise Exception('COHERE APIがタイムアウトしました。しばらく時間をおいて再度お試しください。')
+    except requests.exceptions.RequestException as e:
+        logger.error(f'COHERE APIリクエストエラー: {str(e)}')
+        raise Exception(f'COHERE APIへの接続に失敗しました: {str(e)}')
+    except Exception as e:
+        logger.error(f'予期せぬエラー: {str(e)}')
+        raise
 
 app = create_app()
 

@@ -6,10 +6,10 @@ bind = "0.0.0.0:10000"
 backlog = 2048
 
 # Worker processes
-workers = multiprocessing.cpu_count() * 2 + 1
+workers = 1  # 開発環境では1つで十分
 worker_class = 'sync'
 worker_connections = 1000
-timeout = 30
+timeout = 120  # タイムアウトを120秒に延長
 keepalive = 2
 
 # Logging
