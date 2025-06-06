@@ -569,16 +569,17 @@ function getSupabaseUrl() {
     return supabaseUrl;
 }
 
-// 接続テスト関数（プロキシ対応版）
+// 接続テスト関数
 async function testConnection() {
     try {
         console.log('接続テスト開始');
         
-        const response = await fetch(`${PROXY_URL}/rest/v1/users?limit=1`, {
+        const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json'
             }
         });
 
@@ -615,10 +616,10 @@ function updateConnectionStatus(connected) {
 
 // ユーザー一覧の読み込み
 async function loadUsers() {
-    console.log('ユーザー読み込み開始');
-    
     try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/users?select=*`, {
+        console.log('ユーザー読み込み開始');
+        
+        const response = await fetch(`${supabaseUrl}/rest/v1/users?order=name.asc`, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -629,23 +630,23 @@ async function loadUsers() {
         });
 
         if (!response.ok) {
-            throw new Error('ユーザー一覧の取得に失敗しました');
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const users = await response.json();
-        console.log('取得したユーザー:', users);
+        console.log('ユーザー読み込み成功:', users);
         
         allUsers = users;
-        displayUsers(users);
-        
-        // 最初のユーザーを選択
-        if (users.length > 0 && !currentUserId) {
-            await switchUser(users[0].id);
-        }
+        updateUserSelect();
+        updateUserCount(users.length);
         
     } catch (error) {
         console.error('ユーザー読み込みエラー:', error);
-        showNotification('ユーザー一覧の読み込みに失敗しました', 'error');
+        allUsers = [];
+        updateUserSelect();
+        updateUserCount(0);
+        showNotification('ユーザーの読み込みに失敗しました: ' + error.message, 'error');
     }
 }
 
@@ -733,24 +734,21 @@ function closeModal(modalId) {
     document.getElementById(modalId).style.display = 'none';
 }
 
-// ユーザー追加関数（プロキシ対応版）
+// ユーザー追加関数
 async function addUser() {
     const name = document.getElementById('newUserName').value.trim();
-    
     if (!name) {
         showNotification('ユーザー名を入力してください', 'error');
         return;
     }
-
+    
     try {
-        console.log('ユーザー追加開始:', name);
-        
-        const response = await fetch(`${PROXY_URL}/rest/v1/users`, {
+        const response = await fetch(`${supabaseUrl}/rest/v1/users`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'prefer': 'return=minimal'
             },
             body: JSON.stringify({ name: name })
@@ -764,11 +762,7 @@ async function addUser() {
         await loadUsers();
         closeModal('addUserModal');
         showNotification('ユーザーを追加しました', 'success');
-        
         document.getElementById('newUserName').value = '';
-        
-        // 統計情報を削除
-        setTimeout(forceRemoveStats, 100);
         
     } catch (error) {
         console.error('ユーザー追加エラー:', error);
