@@ -18,7 +18,7 @@
             <div id="connectionStatus" class="status"></div>
             
             <!-- ユーザーセクション -->
-            <section id="userSection" style="display: none;">
+            <section id="userSection">
                 <h2>👤 ユーザー選択</h2>
                 <div class="user-controls">
                     <select id="userSelect" onchange="switchUser(this.value)">
@@ -30,12 +30,21 @@
             </section>
             
             <!-- 現在のユーザー表示 -->
-            <div id="currentUserDisplay" style="display: none;">
+            <div id="currentUserDisplay">
                 <h3>現在のユーザー: <span id="currentUserName"></span></h3>
                 <div class="user-actions">
                     <button onclick="showDeleteUserModal()" class="delete-button">🗑️ ユーザー削除</button>
                     <button onclick="downloadUserData()" class="download-button">📥 データダウンロード</button>
                     <button onclick="clearUserData()" class="clear-button">🗑️ 全記録削除</button>
+                </div>
+            </div>
+            
+            <!-- プロンプト編集セクション -->
+            <div class="prompt-section">
+                <h2>🤖 AI診断プロンプト編集</h2>
+                <div class="prompt-controls">
+                    <button onclick="editPrompt()" class="edit-button">📝 プロンプト編集</button>
+                    <button onclick="testAIAnalysis()" class="test-button">🧪 テスト実行</button>
                 </div>
             </div>
             
@@ -56,7 +65,7 @@
             </div>
             
             <!-- メインコンテンツ -->
-            <div id="mainContent" style="display: none;">
+            <div id="mainContent">
                 <!-- 食事記録フォーム -->
                 <section class="form-section">
                     <h2>📝 食事記録</h2>
