@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 # 環境変数の読み込み
 load_dotenv()
 
-app = Flask(__name__, static_folder='static')
-CORS(app)  # CORS設定でフロントエンドからのアクセスを許可
+app = Flask(__name__)
+CORS(app)
 
 # 環境変数から設定を取得
 COHERE_API_KEY = os.environ.get('COHERE_API_KEY')
@@ -37,14 +37,15 @@ DEFAULT_PROMPT_TEMPLATE = """以下は過去1週間の食事記録です。こ�
 
 回答は親しみやすく、実践的なアドバイスを含めてください。専門用語は分かりやすく説明してください。"""
 
+# CORSプリフライトリクエストの処理
 @app.before_request
 def handle_preflight():
     if request.method == "OPTIONS":
-        res = Response()
-        res.headers['Access-Control-Allow-Origin'] = '*'
-        res.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        res.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, apikey, prefer'
-        return res
+        response = Response()
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, apikey, prefer'
+        return response
 
 @app.after_request
 def after_request(response):
@@ -53,65 +54,7 @@ def after_request(response):
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, apikey, prefer'
     return response
 
-@app.route('/rest/v1/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
-def proxy(path):
-    """既存のSupabaseプロキシ機能を維持"""
-    try:
-        target_url = f"{SUPABASE_URL}/rest/v1/{path}"
-        
-        if request.query_string:
-            target_url += f"?{request.query_string.decode()}"
-        
-        logger.info(f"Proxying {request.method} request to: {target_url}")
-        
-        # ヘッダーを取得
-        headers = {}
-        
-        # APIキーの取得（クエリパラメータまたはヘッダーから）
-        api_key = request.args.get('apikey') or request.headers.get('apikey') or SUPABASE_ANON_KEY
-        if api_key:
-            headers['apikey'] = api_key
-            headers['Authorization'] = f'Bearer {api_key}'
-        
-        # その他のヘッダー
-        for header_name in ['content-type', 'prefer']:
-            if header_name in request.headers:
-                headers[header_name] = request.headers[header_name]
-        
-        # リクエストボディを取得
-        data = request.get_data()
-        
-        # プロキシリクエストを実行
-        response = requests.request(
-            method=request.method,
-            url=target_url,
-            headers=headers,
-            data=data,
-            timeout=30,
-            verify=False
-        )
-        
-        logger.info(f"Proxy response status: {response.status_code}")
-        
-        # レスポンスを返す
-        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
-        response_headers = [(name, value) for (name, value) in response.raw.headers.items()
-                          if name.lower() not in excluded_headers]
-        
-        return Response(
-            response.content,
-            status=response.status_code,
-            headers=response_headers
-        )
-        
-    except requests.RequestException as e:
-        logger.error(f"Proxy Request Error: {e}")
-        return {'error': f'Request failed: {str(e)}'}, 502
-    
-    except Exception as e:
-        logger.error(f"Proxy Error: {e}")
-        return {'error': f'Internal server error: {str(e)}'}, 500
-
+# 静的ファイルの提供
 @app.route('/')
 def serve_static():
     return send_from_directory('.', 'index.html')
@@ -120,39 +63,69 @@ def serve_static():
 def serve_file(path):
     return send_from_directory('.', path)
 
-@app.route('/app.js')
-def serve_js():
-    """JavaScriptファイルを配信"""
+# Supabaseプロキシ
+@app.route('/rest/v1/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+def proxy(path):
     try:
-        return send_from_directory('.', 'app.js', mimetype='application/javascript')
-    except FileNotFoundError:
-        return "app.js not found", 404
+        target_url = f"{SUPABASE_URL}/rest/v1/{path}"
+        if request.query_string:
+            target_url += f"?{request.query_string.decode()}"
+        
+        logger.info(f"Proxying {request.method} request to: {target_url}")
+        
+        headers = {}
+        api_key = request.args.get('apikey') or request.headers.get('apikey') or SUPABASE_ANON_KEY
+        if api_key:
+            headers['apikey'] = api_key
+            headers['Authorization'] = f'Bearer {api_key}'
+        
+        for header_name in ['content-type', 'prefer']:
+            if header_name in request.headers:
+                headers[header_name] = request.headers[header_name]
+        
+        response = requests.request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            data=request.get_data(),
+            timeout=30,
+            verify=False
+        )
+        
+        logger.info(f"Proxy response status: {response.status_code}")
+        
+        excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+        headers = [(name, value) for (name, value) in response.raw.headers.items()
+                  if name.lower() not in excluded_headers]
+        
+        return Response(response.content, response.status_code, headers)
+        
+    except requests.RequestException as e:
+        logger.error(f"Proxy Request Error: {e}")
+        return jsonify({'error': f'Request failed: {str(e)}'}), 502
+    except Exception as e:
+        logger.error(f"Proxy Error: {e}")
+        return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
-@app.route('/styles.css')
-def serve_css():
-    """CSSファイルを配信"""
-    try:
-        return send_from_directory('.', 'styles.css', mimetype='text/css')
-    except FileNotFoundError:
-        return "styles.css not found", 404
-
+# AI診断エンドポイント
 @app.route('/api/ai-diagnosis', methods=['POST'])
 def ai_diagnosis():
     """COHERE AIを使用した食事診断API"""
     if not COHERE_API_KEY:
         logger.error('COHERE_API_KEY が設定されていません')
         return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
+    
     try:
         data = request.get_json()
         if not data:
             return jsonify({'error': 'リクエストボディが空です'}), 400
-            
+        
         meal_records = data.get('meal_records', [])
         custom_prompt = data.get('custom_prompt', DEFAULT_PROMPT_TEMPLATE)
         
         if not meal_records:
             return jsonify({'error': '食事記録が提供されていません'}), 400
-            
+        
         logger.info(f'食事記録数: {len(meal_records)}')
         meal_summary = format_meal_records_for_ai(meal_records)
         prompt = custom_prompt.format(meal_summary=meal_summary)
@@ -180,7 +153,7 @@ def ai_diagnosis():
             error_msg = f"COHERE API エラー: {cohere_response.status_code}"
             logger.error(f"{error_msg}: {cohere_response.text}")
             return jsonify({'error': error_msg}), 500
-            
+        
         cohere_data = cohere_response.json()
         diagnosis = cohere_data['generations'][0]['text'].strip()
         
@@ -201,41 +174,6 @@ def ai_diagnosis():
         logger.error(f'AI診断エラー: {str(e)}')
         return jsonify({'error': f'内部エラー: {str(e)}'}), 500
 
-@app.route('/api/prompt-template', methods=['GET'])
-def get_prompt_template():
-    """現在のプロンプトテンプレートを取得"""
-    return jsonify({
-        'default_template': DEFAULT_PROMPT_TEMPLATE,
-        'variables': ['meal_summary'],
-        'description': 'プロンプト内で {meal_summary} が実際の食事記録に置き換えられます'
-    })
-
-@app.route('/api/prompt-template', methods=['POST'])
-def save_prompt_template():
-    """カスタムプロンプトテンプレートを保存（セッション用）"""
-    try:
-        data = request.get_json()
-        custom_prompt = data.get('prompt_template', '')
-        
-        if not custom_prompt:
-            return jsonify({'error': 'プロンプトテンプレートが空です'}), 400
-        
-        # {meal_summary} が含まれているかチェック
-        if '{meal_summary}' not in custom_prompt:
-            return jsonify({'error': 'プロンプトには {meal_summary} を含める必要があります'}), 400
-        
-        logger.info(f'カスタムプロンプト保存: {len(custom_prompt)}文字')
-        
-        return jsonify({
-            'success': True,
-            'message': 'プロンプトテンプレートを保存しました',
-            'template': custom_prompt
-        })
-        
-    except Exception as e:
-        logger.error(f'プロンプト保存エラー: {str(e)}')
-        return jsonify({'error': f'プロンプトの保存に失敗しました: {str(e)}'}), 500
-
 def format_meal_records_for_ai(records):
     """食事記録をAI用にフォーマット"""
     formatted_records = []
@@ -253,73 +191,22 @@ def format_meal_records_for_ai(records):
         else:
             date_str = "日付不明"
             time_str = "時間不明"
+        
         calories = record.get('calories')
         calories_str = f"{calories}kcal" if calories else "不明"
+        
         formatted_record = f"""日付: {date_str} {time_str}
 食事の種類: {record.get('meal_type', '不明')}
 食べ物: {record.get('food_name', '不明')}
 カロリー: {calories_str}
 場所: {record.get('location', '記録なし')}
 備考: {record.get('notes', 'なし')}"""
+        
         formatted_records.append(formatted_record)
+    
     return '\n\n'.join(formatted_records)
 
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """ヘルスチェック用エンドポイント"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
-        'cohere_api_configured': bool(COHERE_API_KEY),
-        'supabase_configured': bool(SUPABASE_ANON_KEY and SUPABASE_URL),
-        'proxy_enabled': True,
-        'version': '2.0.0'
-    })
-
-@app.route('/api/test-cohere', methods=['POST'])
-def test_cohere():
-    """COHERE API接続テスト"""
-    if not COHERE_API_KEY:
-        return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
-    
-    try:
-        test_prompt = "こんにちは。簡単な挨拶をお願いします。"
-        
-        response = requests.post(
-            'https://api.cohere.ai/v1/generate',
-            headers={
-                'Authorization': f'Bearer {COHERE_API_KEY}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'model': 'command',
-                'prompt': test_prompt,
-                'max_tokens': 50,
-                'temperature': 0.7
-            },
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            return jsonify({
-                'success': True,
-                'message': 'COHERE API接続成功',
-                'test_response': data['generations'][0]['text'].strip()
-            })
-        else:
-            return jsonify({
-                'success': False,
-                'error': f'COHERE API エラー: {response.status_code}',
-                'details': response.text
-            }), response.status_code
-            
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'COHERE API接続テスト失敗: {str(e)}'
-        }), 500
-
+# エラーハンドラー
 @app.errorhandler(404)
 def not_found_error(error):
     return jsonify({'error': 'Not Found', 'message': 'The requested resource was not found'}), 404
