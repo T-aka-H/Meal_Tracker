@@ -19,7 +19,18 @@ load_dotenv()
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    # CORSの設定を更新
+    CORS(app, resources={
+        r"/*": {
+            "origins": [
+                "https://meal-tracker-1-y2dy.onrender.com",
+                "http://localhost:5000",
+                "http://127.0.0.1:5000"
+            ],
+            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
 
     # 環境変数から設定を取得
     app.config['COHERE_API_KEY'] = os.environ.get('COHERE_API_KEY')
@@ -54,6 +65,29 @@ Please analyze from the following perspectives:
 5. Specific recommendations
 
 Please provide friendly and practical advice. Explain technical terms in an easy-to-understand way."""
+
+    @app.route('/')
+    def index():
+        """メインページを提供"""
+        return send_from_directory('.', 'index.html')
+
+    @app.route('/<path:filename>')
+    def serve_static(filename):
+        """静的ファイルを提供"""
+        return send_from_directory('.', filename)
+
+    @app.route('/api/health')
+    def health_check():
+        """ヘルスチェックエンドポイント"""
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'environment': {
+                'COHERE_API_KEY': bool(app.config['COHERE_API_KEY']),
+                'SUPABASE_ANON_KEY': bool(app.config['SUPABASE_ANON_KEY']),
+                'SUPABASE_URL': bool(app.config['SUPABASE_URL'])
+            }
+        })
 
     @app.route('/api/prompt-template', methods=['GET', 'POST'])
     def handle_prompt_template():
@@ -149,6 +183,72 @@ Please provide friendly and practical advice. Explain technical terms in an easy
                 'success': False,
                 'error': str(e)
             }), 500
+
+    @app.route('/api/ai-diagnosis', methods=['POST', 'OPTIONS'])
+    def ai_diagnosis():
+        """COHERE AIを使用した食事診断API"""
+        logger.debug('AI診断エンドポイントにリクエストを受信')
+        logger.debug(f'リクエストメソッド: {request.method}')
+        logger.debug(f'リクエストヘッダー: {dict(request.headers)}')
+
+        # OPTIONSリクエストの処理
+        if request.method == 'OPTIONS':
+            response = Response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+
+        if not app.config['COHERE_API_KEY']:
+            logger.error('COHERE_API_KEY が設定されていません')
+            return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
+
+        try:
+            data = request.get_json()
+            logger.debug(f'受信したリクエストデータ: {data}')
+
+            if not data:
+                logger.error('リクエストボディが空です')
+                return jsonify({'error': 'リクエストボディが空です'}), 400
+
+            meal_records = data.get('meal_records', [])
+            custom_prompt_ja = data.get('custom_prompt_ja', app.config['DEFAULT_PROMPT_TEMPLATE_JA'])
+            custom_prompt_en = data.get('custom_prompt_en', app.config['DEFAULT_PROMPT_TEMPLATE_EN'])
+
+            if not meal_records:
+                logger.error('食事記録が提供されていません')
+                return jsonify({'error': '食事記録が提供されていません'}), 400
+
+            logger.info(f'食事記録数: {len(meal_records)}')
+            meal_summary = format_meal_records_for_ai(meal_records)
+            
+            # 日本語の診断を取得
+            prompt_ja = custom_prompt_ja.format(meal_summary=meal_summary)
+            diagnosis_ja = get_cohere_diagnosis(prompt_ja, app.config['COHERE_API_KEY'])
+            
+            # 英語の診断を取得
+            prompt_en = custom_prompt_en.format(meal_summary=meal_summary)
+            diagnosis_en = get_cohere_diagnosis(prompt_en, app.config['COHERE_API_KEY'])
+
+            response = jsonify({
+                'success': True,
+                'diagnosis_ja': diagnosis_ja,
+                'diagnosis_en': diagnosis_en,
+                'meal_count': len(meal_records)
+            })
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
+        except requests.exceptions.Timeout:
+            logger.error('COHERE API タイムアウト')
+            return jsonify({'error': 'AI診断がタイムアウトしました。しばらく時間をおいて再度お試しください。'}), 504
+        except requests.exceptions.RequestException as e:
+            logger.error(f'COHERE API リクエストエラー: {str(e)}')
+            return jsonify({'error': 'AI診断サービスへの接続に失敗しました。'}), 503
+        except Exception as e:
+            logger.error(f'AI診断エラー: {str(e)}')
+            logger.exception('詳細なエラー情報:')
+            return jsonify({'error': f'内部エラー: {str(e)}'}), 500
 
     return app
 
