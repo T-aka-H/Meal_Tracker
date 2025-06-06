@@ -64,18 +64,16 @@ async function getAIFoodDiagnosis() {
 }
 
 // HTML要素の追加（修正版 - ユーザー設定の下に配置）
-function addAIDiagnosisElements() {
-    // 既にAI診断セクションが存在する場合は追加しない
-    if (document.getElementById('aiDiagnosisBtn')) {
-        return;
-    }
-
-    // currentUserDisplayの直後に追加する
-    const currentUserDisplay = document.getElementById('currentUserDisplay');
-    if (!currentUserDisplay) {
-        console.error('currentUserDisplay要素が見つかりません');
-        return;
-    }
+// AI食事診断の実行
+async function getAIFoodDiagnosis() {
+    try {
+        // 関数が定義されているか確認
+        if (typeof getAIDiagnosisFromBackend !== 'function') {
+            console.error('getAIDiagnosisFromBackend関数が定義されていません');
+            document.getElementById('diagnosisJa').textContent = 'エラー: AI診断機能が正しく読み込まれていません';
+            document.getElementById('diagnosisEn').textContent = 'Error: AI diagnosis function not loaded properly';
+            return;
+        }
 
     const aiDiagnosisSection = document.createElement('div');
     aiDiagnosisSection.innerHTML = `
