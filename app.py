@@ -2,6 +2,11 @@ from flask import Flask, request, Response
 import requests
 import os
 from dotenv import load_dotenv
+import logging
+
+# ログ設定
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 環境変数の読み込み
 load_dotenv()
