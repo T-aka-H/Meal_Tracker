@@ -38,7 +38,7 @@ async function getAIFoodDiagnosis() {
 // バックエンドAPIを使用して食事診断を取得
 async function getAIDiagnosisFromBackend(mealRecords) {
     try {
-        const response = await fetch('https://meal-tracker-1-y2dy.onrender.com/api/ai-diagnosis', {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
