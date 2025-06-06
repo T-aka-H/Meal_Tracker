@@ -426,37 +426,25 @@ function setDefaultDateTime() {
 
 // Supabase設定の読み込み
 function loadSupabaseConfig() {
-    const savedKey = localStorage.getItem('supabaseKey');
-    
-    if (savedKey) {
-        document.getElementById('supabaseKey').value = savedKey;
-        connectSupabase();
-    }
+    connectSupabase();
 }
 
 // Supabaseへの接続
 async function connectSupabase() {
-    const key = document.getElementById('supabaseKey').value.trim();
-    
-    if (!key) {
-        showNotification('APIキーを入力してください', 'error');
-        return;
-    }
-
     try {
         // 古いクライアントインスタンスをクリア
         supabase = null;
         supabaseInstance = null;
 
         // 新しいSupabaseクライアントを作成
-        supabase = window.supabase.createClient(supabaseUrl, key);
+        supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
         // ここはSupabase本体に直接アクセス
         const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
-                'apikey': key,
-                'Authorization': `Bearer ${key}`,
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${supabaseAnonKey}`,
                 'Accept': 'application/json'
             }
         });
@@ -467,38 +455,17 @@ async function connectSupabase() {
         }
 
         // 接続成功時の処理
-        const status = document.getElementById('connectionStatus');
-        if (status) {
-            status.className = 'status connected';
-            status.textContent = '✅ Supabaseに接続済み';
-        }
-
-        const setupSection = document.getElementById('setupSection');
-        if (setupSection) {
-            setupSection.style.display = 'none';
-        }
-
         const userSection = document.getElementById('userSection');
         if (userSection) {
             userSection.style.display = 'block';
         }
 
         await loadUsers();
-        showNotification('Supabaseに接続しました！', 'success');
-        
-        // 設定を保存（URLは定数を使用するので保存不要）
-        localStorage.setItem('supabaseKey', key);
         
     } catch (error) {
         console.error('Supabase接続エラー:', error);
         const errorMessage = error.message || error.error_description || 'Unknown error';
         showNotification('接続に失敗しました: ' + errorMessage, 'error');
-        
-        const status = document.getElementById('connectionStatus');
-        if (status) {
-            status.className = 'status disconnected';
-            status.textContent = '❌ 接続に失敗しました。設定を確認してください。';
-        }
         
         // エラーの詳細をコンソールに出力
         if (error.status) {
