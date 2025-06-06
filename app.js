@@ -141,7 +141,7 @@ async function getAIDiagnosisFromBackend(mealRecords) {
 
 // プロンプト編集機能
 
-// プロンプト編集モーダルを表示
+// 1. プロンプト編集モーダルを表示（156行目付近）
 async function showPromptEditorModal() {
     const modal = document.getElementById('promptEditorModal');
     const textarea = document.getElementById('promptTemplateTextarea');
@@ -153,7 +153,8 @@ async function showPromptEditorModal() {
     try {
         statusDiv.textContent = 'プロンプトテンプレートを読み込み中...';
         
-        const response = await fetch('/api/prompt-template');
+        // ★修正: Meal_Tracker-2のURLを使用
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (response.ok) {
             const data = await response.json();
             textarea.value = customPromptTemplate || data.default_template;
@@ -169,7 +170,8 @@ async function showPromptEditorModal() {
     modal.style.display = 'block';
 }
 
-// プロンプトを保存
+
+// 2. プロンプトを保存（195行目付近）
 async function savePromptTemplate() {
     const textarea = document.getElementById('promptTemplateTextarea');
     const statusDiv = document.getElementById('promptEditorStatus');
@@ -191,7 +193,8 @@ async function savePromptTemplate() {
     try {
         statusDiv.textContent = '保存中...';
         
-        const response = await fetch('/api/prompt-template', {
+        // ★修正: Meal_Tracker-2のURLを使用
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -220,7 +223,7 @@ async function savePromptTemplate() {
     }
 }
 
-// プロンプトをデフォルトに戻す
+// 3. プロンプトをデフォルトに戻す（241行目付近）
 async function resetPromptTemplate() {
     const textarea = document.getElementById('promptTemplateTextarea');
     const statusDiv = document.getElementById('promptEditorStatus');
@@ -230,7 +233,8 @@ async function resetPromptTemplate() {
     try {
         statusDiv.textContent = 'デフォルトプロンプトを読み込み中...';
         
-        const response = await fetch('/api/prompt-template');
+        // ★修正: Meal_Tracker-2のURLを使用
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (response.ok) {
             const data = await response.json();
             textarea.value = data.default_template;
@@ -246,7 +250,7 @@ async function resetPromptTemplate() {
     }
 }
 
-// COHERE接続テスト
+// 4. COHERE接続テスト（265行目付近）
 async function testCohereConnection() {
     const testBtn = document.getElementById('testCohereBtn');
     const statusDiv = document.getElementById('cohereTestStatus');
@@ -255,7 +259,8 @@ async function testCohereConnection() {
     if (statusDiv) statusDiv.textContent = 'COHERE API接続テスト中...';
     
     try {
-        const response = await fetch('/api/test-cohere', {
+        // ★修正: Meal_Tracker-2のURLを使用
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-cohere', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
