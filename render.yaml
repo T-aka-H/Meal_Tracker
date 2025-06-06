@@ -3,7 +3,7 @@ services:
     name: meal-tracker
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:app -c gunicorn.conf.py
+    startCommand: python -m gunicorn wsgi:app --bind 0.0.0.0:$PORT --log-level debug
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
