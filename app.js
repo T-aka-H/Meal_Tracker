@@ -557,11 +557,10 @@ function updateConnectionStatus(connected) {
 
 // ユーザー一覧の読み込み
 async function loadUsers() {
+    console.log('ユーザー読み込み開始');
+    
     try {
-        console.log('ユーザー読み込み開始');
-        
-        // Supabase APIに直接アクセス
-        const response = await fetch(`${supabaseUrl}/rest/v1/users?order=name.asc`, {
+        const response = await fetch(`${supabaseUrl}/rest/v1/users?select=*`, {
             method: 'GET',
             headers: {
                 'apikey': getSupabaseKey(),
@@ -570,39 +569,35 @@ async function loadUsers() {
             }
         });
 
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-
+        console.log('ユーザー読み込みレスポンス:', response.status);
+        
         if (!response.ok) {
             const errorText = await response.text();
-            console.error('Response error:', errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
+            console.error('ユーザー読み込みエラーレスポンス:', errorText);
+            throw new Error(`ユーザー読み込み失敗: ${response.status}`);
         }
 
         const users = await response.json();
-        console.log('ユーザー読み込み成功:', users);
+        console.log('読み込まれたユーザー:', users);
         
         allUsers = users;
-        updateUserSelect();
         updateUserCount(users.length);
-        
+        updateUserSelect();
+
         // 最後に選択されていたユーザーを復元
         const lastUserId = localStorage.getItem('lastUserId');
         if (lastUserId) {
+            console.log('前回のユーザーIDを復元:', lastUserId);
             const userSelect = document.getElementById('userSelect');
             if (userSelect) {
                 userSelect.value = lastUserId;
                 await switchUser();
             }
         }
-        
+
     } catch (error) {
         console.error('ユーザー読み込みエラー:', error);
-        console.error('エラーの詳細:', error.stack);
-        allUsers = [];
-        updateUserSelect();
-        updateUserCount(0);
-        showNotification('ユーザーの読み込みに失敗しました: ' + error.message, 'error');
+        showNotification('ユーザーの読み込みに失敗しました', 'error');
     }
 }
 
@@ -957,23 +952,40 @@ function updateUserCount(count) {
     console.log('ユーザー数を更新:', count);
 }
 
-// ユーザー選択肢を更新する関数  
+// ユーザー選択肢を更新する関数
 function updateUserSelect() {
+    console.log('ユーザー選択肢の更新開始');
     const userSelect = document.getElementById('userSelect');
-    if (!userSelect) return;
-    
-    while (userSelect.children.length > 1) {
-        userSelect.removeChild(userSelect.lastChild);
+    if (!userSelect) {
+        console.error('userSelect要素が見つかりません');
+        return;
     }
     
+    // 現在の選択値を保持
+    const currentValue = userSelect.value;
+    console.log('現在の選択値:', currentValue);
+
+    // 既存のオプションをクリア（最初の「選択してください」は残す）
+    while (userSelect.options.length > 1) {
+        userSelect.remove(1);
+    }
+
+    // ユーザーオプションを追加
     allUsers.forEach(user => {
         const option = document.createElement('option');
         option.value = user.id;
         option.textContent = user.name;
         userSelect.appendChild(option);
+        console.log('ユーザーオプション追加:', user.name, user.id);
     });
+
+    // 以前の選択を復元（存在する場合）
+    if (currentValue && Array.from(userSelect.options).some(opt => opt.value === currentValue)) {
+        userSelect.value = currentValue;
+        console.log('選択値を復元:', currentValue);
+    }
     
-    console.log('ユーザー選択肢を更新:', allUsers.length);
+    console.log('ユーザー選択肢の更新完了');
 }
 
 async function deleteUser() {

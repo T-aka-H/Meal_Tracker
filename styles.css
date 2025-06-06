@@ -5,8 +5,12 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f0f2f5;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+    background-color: #f3f4f6;
+    color: #1f2937;
     min-height: 100vh;
     padding: 20px;
 }
@@ -14,18 +18,255 @@ body {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 30px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+    padding: 20px;
+}
+
+/* ヘッダー */
+header {
+    margin-bottom: 30px;
 }
 
 h1 {
-    text-align: center;
-    color: #1a1a1a;
-    margin-bottom: 30px;
-    font-size: 2.2em;
-    font-weight: 700;
+    font-size: 2em;
+    color: #1f2937;
+    margin: 0 0 20px 0;
+}
+
+.user-section {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#userSelect {
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1em;
+    min-width: 200px;
+}
+
+.add-user-btn, .delete-user-btn {
+    padding: 8px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background-color: white;
+    color: #374151;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.add-user-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.delete-user-btn:hover {
+    background-color: #fee2e2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+/* メインコンテンツ */
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* フォームセクション */
+.form-section {
+    background-color: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-section h3 {
+    margin: 0 0 20px 0;
+    color: #1f2937;
+}
+
+.form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 16px;
+}
+
+.form-group {
+    flex: 1;
+}
+
+label {
+    display: block;
+    margin-bottom: 6px;
+    color: #4b5563;
+    font-size: 0.9em;
+}
+
+input, select, textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 1em;
+    background-color: white;
+}
+
+textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-actions {
+    margin-top: 24px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+button[type="submit"] {
+    padding: 10px 20px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s ease;
+}
+
+button[type="submit"]:hover {
+    background-color: #1d4ed8;
+}
+
+/* 記録セクション */
+.records-section {
+    background-color: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.records-section h3 {
+    margin: 0 0 20px 0;
+    color: #1f2937;
+}
+
+/* モーダル */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+}
+
+.modal-content {
+    position: relative;
+    background-color: white;
+    margin: 100px auto;
+    padding: 24px;
+    width: 90%;
+    max-width: 500px;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.modal h2 {
+    margin: 0 0 20px 0;
+    color: #1f2937;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.modal button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 1em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.modal button.secondary {
+    background-color: white;
+    border: 1px solid #d1d5db;
+    color: #374151;
+}
+
+.modal button.danger {
+    background-color: #dc2626;
+    border: none;
+    color: white;
+}
+
+.modal button.secondary:hover {
+    background-color: #f3f4f6;
+}
+
+.modal button.danger:hover {
+    background-color: #b91c1c;
+}
+
+/* ローディングスピナー */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid currentColor;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 通知 */
+.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    background-color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    animation: slideIn 0.3s ease;
+}
+
+.notification.success {
+    background-color: #ecfdf5;
+    color: #059669;
+}
+
+.notification.error {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
 }
 
 .setup-section {
@@ -83,28 +324,6 @@ h1 {
     background: #f8d7da;
     color: #721c24;
     border: 1px solid #f5c6cb;
-}
-
-.user-section {
-    background: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border: 1px solid #e9ecef;
-}
-
-.user-controls {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 15px;
-}
-
-.user-select {
-    flex: 1;
-    min-width: 200px;
 }
 
 .current-user {
@@ -232,21 +451,6 @@ textarea {
     flex-wrap: wrap;
 }
 
-.records-section {
-    background: #ffffff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    border: 1px solid #e9ecef;
-    margin-top: 40px;
-}
-
-.records-section h2 {
-    color: #495057;
-    margin-bottom: 15px;
-    font-size: 1.3em;
-}
-
 .records-container {
     display: flex;
     flex-direction: column;
@@ -359,151 +563,6 @@ textarea {
     font-style: italic;
 }
 
-.modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 1000;
-    backdrop-filter: blur(5px);
-}
-
-.modal-content {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: #ffffff;
-    padding: 25px;
-    border-radius: 8px;
-    max-width: 400px;
-    width: 90%;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-    border: 1px solid #e9ecef;
-}
-
-.loading {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #495057;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: #495057;
-    color: white;
-    padding: 12px 18px;
-    border-radius: 6px;
-    z-index: 1001;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    animation: slideIn 0.3s ease;
-    max-width: 300px;
-    word-wrap: break-word;
-}
-
-.notification.error {
-    background: #dc3545;
-}
-
-.notification.success {
-    background: #28a745;
-}
-
-@keyframes slideIn {
-    from { transform: translateX(100%); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slideOut {
-    from { transform: translateX(0); opacity: 1; }
-    to { transform: translateX(100%); opacity: 0; }
-}
-
-/* スマートフォン対応 */
-@media (max-width: 768px) {
-    body {
-        padding: 5px;
-    }
-    
-    .container {
-        padding: 15px;
-        border-radius: 8px;
-    }
-    
-    h1 {
-        font-size: 1.5em;
-        margin-bottom: 15px;
-    }
-    
-    .form-row {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-    
-    .controls {
-        flex-direction: column;
-    }
-    
-    .record-item {
-        grid-template-columns: 1fr;
-        gap: 10px;
-    }
-    
-    .record-actions {
-        justify-content: flex-start;
-    }
-    
-    .user-controls {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .user-select {
-        min-width: auto;
-    }
-    
-    .btn {
-        padding: 14px 20px;
-        font-size: 16px;
-    }
-    
-    .btn-small {
-        padding: 10px 15px;
-        font-size: 14px;
-    }
-    
-    .modal-content {
-        width: 95%;
-        padding: 20px;
-    }
-}
-
-@media (max-width: 480px) {
-    .record-actions {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .btn-edit, .btn-danger {
-        margin: 2px 0;
-    }
-}
-
 .advice-section {
     background-color: #f8f9fa;
     border-radius: 8px;
@@ -606,4 +665,74 @@ textarea {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* スマートフォン対応 */
+@media (max-width: 768px) {
+    body {
+        padding: 5px;
+    }
+    
+    .container {
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    h1 {
+        font-size: 1.5em;
+        margin-bottom: 15px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .controls {
+        flex-direction: column;
+    }
+    
+    .record-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .record-actions {
+        justify-content: flex-start;
+    }
+    
+    .user-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .user-select {
+        min-width: auto;
+    }
+    
+    .btn {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+    
+    .btn-small {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        padding: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .record-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-edit, .btn-danger {
+        margin: 2px 0;
+    }
 } 
