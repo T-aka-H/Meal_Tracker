@@ -1,4 +1,4 @@
-// 食事記録アプリ - 完全版（COHERE AI診断機能付き）
+// 食事記録アプリ - 完全版（COHERE AI診断機能付き + プロンプト編集機能）
 console.log('app.js読み込み開始');
 
 // グローバル変数
@@ -7,6 +7,7 @@ let currentUser = null;
 let currentUserId = null;
 let editingId = null;
 let allUsers = [];
+let customPromptTemplate = null; // カスタムプロンプト保存用
 
 // Supabase設定（動作確認済み）
 const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
@@ -74,14 +75,21 @@ async function getAIFoodDiagnosis() {
 // バックエンドAPIを使用して食事診断を取得
 async function getAIDiagnosisFromBackend(mealRecords) {
     try {
+        const requestBody = {
+            meal_records: mealRecords
+        };
+
+        // カスタムプロンプトがある場合は追加
+        if (customPromptTemplate) {
+            requestBody.custom_prompt = customPromptTemplate;
+        }
+
         const response = await fetch('/api/ai-diagnosis', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                meal_records: mealRecords
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -95,11 +103,158 @@ async function getAIDiagnosisFromBackend(mealRecords) {
             throw new Error(data.error || '診断に失敗しました');
         }
 
+        console.log('AI診断完了:', {
+            meal_count: data.meal_count,
+            custom_prompt_used: data.prompt_used,
+            diagnosis_length: data.diagnosis.length
+        });
+
         return data.diagnosis;
 
     } catch (error) {
         console.error('バックエンドAPI呼び出しエラー:', error);
         throw new Error('AI診断サービスへの接続に失敗しました。');
+    }
+}
+
+// プロンプト編集機能
+
+// プロンプト編集モーダルを表示
+async function showPromptEditorModal() {
+    const modal = document.getElementById('promptEditorModal');
+    const textarea = document.getElementById('promptTemplateTextarea');
+    const statusDiv = document.getElementById('promptEditorStatus');
+    
+    if (!modal || !textarea) return;
+    
+    // デフォルトプロンプトを取得
+    try {
+        statusDiv.textContent = 'プロンプトテンプレートを読み込み中...';
+        
+        const response = await fetch('/api/prompt-template');
+        if (response.ok) {
+            const data = await response.json();
+            textarea.value = customPromptTemplate || data.default_template;
+            statusDiv.textContent = '準備完了';
+        } else {
+            throw new Error('プロンプトテンプレートの取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('プロンプト取得エラー:', error);
+        statusDiv.textContent = 'エラー: ' + error.message;
+    }
+    
+    modal.style.display = 'block';
+}
+
+// プロンプトを保存
+async function savePromptTemplate() {
+    const textarea = document.getElementById('promptTemplateTextarea');
+    const statusDiv = document.getElementById('promptEditorStatus');
+    
+    if (!textarea) return;
+    
+    const promptTemplate = textarea.value.trim();
+    
+    if (!promptTemplate) {
+        statusDiv.textContent = 'エラー: プロンプトが空です';
+        return;
+    }
+    
+    if (!promptTemplate.includes('{meal_summary}')) {
+        statusDiv.textContent = 'エラー: プロンプトには {meal_summary} を含める必要があります';
+        return;
+    }
+    
+    try {
+        statusDiv.textContent = '保存中...';
+        
+        const response = await fetch('/api/prompt-template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt_template: promptTemplate
+            })
+        });
+        
+        if (response.ok) {
+            customPromptTemplate = promptTemplate;
+            statusDiv.textContent = '保存完了！';
+            showNotification('カスタムプロンプトを保存しました', 'success');
+            
+            setTimeout(() => {
+                closeModal('promptEditorModal');
+            }, 1500);
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '保存に失敗しました');
+        }
+    } catch (error) {
+        console.error('プロンプト保存エラー:', error);
+        statusDiv.textContent = 'エラー: ' + error.message;
+        showNotification('プロンプトの保存に失敗しました', 'error');
+    }
+}
+
+// プロンプトをデフォルトに戻す
+async function resetPromptTemplate() {
+    const textarea = document.getElementById('promptTemplateTextarea');
+    const statusDiv = document.getElementById('promptEditorStatus');
+    
+    if (!textarea) return;
+    
+    try {
+        statusDiv.textContent = 'デフォルトプロンプトを読み込み中...';
+        
+        const response = await fetch('/api/prompt-template');
+        if (response.ok) {
+            const data = await response.json();
+            textarea.value = data.default_template;
+            customPromptTemplate = null;
+            statusDiv.textContent = 'デフォルトプロンプトに戻しました';
+            showNotification('デフォルトプロンプトに戻しました', 'success');
+        } else {
+            throw new Error('デフォルトプロンプトの取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('プロンプトリセットエラー:', error);
+        statusDiv.textContent = 'エラー: ' + error.message;
+    }
+}
+
+// COHERE接続テスト
+async function testCohereConnection() {
+    const testBtn = document.getElementById('testCohereBtn');
+    const statusDiv = document.getElementById('cohereTestStatus');
+    
+    if (testBtn) testBtn.disabled = true;
+    if (statusDiv) statusDiv.textContent = 'COHERE API接続テスト中...';
+    
+    try {
+        const response = await fetch('/api/test-cohere', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusDiv.textContent = '✅ COHERE API接続成功: ' + data.test_response;
+            showNotification('COHERE API接続テスト成功', 'success');
+        } else {
+            statusDiv.textContent = '❌ 接続失敗: ' + data.error;
+            showNotification('COHERE API接続テスト失敗', 'error');
+        }
+    } catch (error) {
+        console.error('COHERE接続テストエラー:', error);
+        statusDiv.textContent = '❌ テストエラー: ' + error.message;
+        showNotification('接続テストでエラーが発生しました', 'error');
+    } finally {
+        if (testBtn) testBtn.disabled = false;
     }
 }
 
@@ -114,9 +269,16 @@ function showAIDiagnosisResult(diagnosis) {
     // 診断結果をHTMLに整形
     const formattedDiagnosis = formatDiagnosisForDisplay(diagnosis);
     
+    const promptStatus = customPromptTemplate ? 
+        '<span style="color: #059669;">📝 カスタムプロンプト使用</span>' : 
+        '<span style="color: #6b7280;">📄 デフォルトプロンプト使用</span>';
+    
     resultContainer.innerHTML = `
         <div class="ai-diagnosis-container">
             <h4>🤖 AI食事診断結果</h4>
+            <div style="text-align: right; font-size: 0.8em; margin-bottom: 10px;">
+                ${promptStatus}
+            </div>
             <div class="diagnosis-content">
                 ${formattedDiagnosis}
             </div>
@@ -160,10 +322,19 @@ function addAIDiagnosisElements() {
                 <p style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
                     過去1週間の食事記録を基に、AIが栄養バランスとアドバイスを提供します
                 </p>
-                <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
-                    🔍 AI診断を実行
-                    <span id="aiDiagnosisLoading" style="display: none;" class="loading-spinner"></span>
-                </button>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
+                        🔍 AI診断を実行
+                        <span id="aiDiagnosisLoading" style="display: none;" class="loading-spinner"></span>
+                    </button>
+                    <button onclick="showPromptEditorModal()" class="btn btn-secondary">
+                        ✏️ プロンプト編集
+                    </button>
+                    <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
+                        🔗 接続テスト
+                    </button>
+                </div>
+                <div id="cohereTestStatus" style="margin-top: 10px; font-size: 0.9em; color: #6b7280;"></div>
             </div>
             
             <!-- AI診断結果表示エリア -->
@@ -171,6 +342,54 @@ function addAIDiagnosisElements() {
         `;
         
         recordsSection.appendChild(aiDiagnosisButton);
+    }
+}
+
+// プロンプト編集機能をページ下部に追加
+function addPromptEditorSection() {
+    const body = document.body;
+    if (!document.getElementById('promptEditorModal')) {
+        const promptEditorHTML = `
+            <!-- プロンプト編集モーダル -->
+            <div id="promptEditorModal" class="modal">
+                <div class="modal-content" style="max-width: 800px; width: 95%;">
+                    <h3>🎯 AI診断プロンプト編集</h3>
+                    <div style="margin-bottom: 15px;">
+                        <p style="color: #6b7280; font-size: 0.9em;">
+                            AI診断で使用するプロンプトをカスタマイズできます。<br>
+                            <strong>{meal_summary}</strong> の部分に実際の食事記録が挿入されます。
+                        </p>
+                        <div id="promptEditorStatus" style="color: #059669; font-size: 0.9em; margin-top: 5px;">
+                            準備中...
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label for="promptTemplateTextarea" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                            プロンプトテンプレート:
+                        </label>
+                        <textarea 
+                            id="promptTemplateTextarea" 
+                            rows="15" 
+                            style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-family: monospace; font-size: 14px; line-height: 1.4;"
+                            placeholder="プロンプトテンプレートを入力してください..."
+                        ></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button onclick="savePromptTemplate()" class="btn btn-primary">
+                            💾 保存
+                        </button>
+                        <button onclick="resetPromptTemplate()" class="btn btn-secondary">
+                            🔄 デフォルトに戻す
+                        </button>
+                        <button onclick="closeModal('promptEditorModal')" class="btn btn-secondary">
+                            ❌ キャンセル
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        body.insertAdjacentHTML('beforeend', promptEditorHTML);
     }
 }
 
@@ -229,9 +448,81 @@ function addAIDiagnosisStyles() {
             margin-left: 8px;
         }
         
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        /* プロンプト編集モーダル専用スタイル */
+        #promptEditorModal .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        #promptTemplateTextarea {
+            resize: vertical;
+            min-height: 300px;
+        }
+        
+        #promptEditorStatus {
+            padding: 8px;
+            border-radius: 4px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 768px) {
+            .modal-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                justify-content: center;
+            }
         }
     `;
     document.head.appendChild(style);
@@ -244,12 +535,14 @@ function initializeAIDiagnosis() {
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 addAIDiagnosisElements();
+                addPromptEditorSection();
                 addAIDiagnosisStyles();
             }, 1000);
         });
     } else {
         setTimeout(() => {
             addAIDiagnosisElements();
+            addPromptEditorSection();
             addAIDiagnosisStyles();
         }, 1000);
     }
@@ -506,6 +799,7 @@ async function switchUser(userId) {
         // AI診断機能を追加
         setTimeout(() => {
             addAIDiagnosisElements();
+            addPromptEditorSection();
             addAIDiagnosisStyles();
         }, 500);
         
@@ -645,6 +939,231 @@ async function deleteUser() {
     } finally {
         if (loadingSpinner) loadingSpinner.style.display = 'none';
     }
+}
+
+// 記録の削除
+function deleteRecord(id) {
+    const modal = document.getElementById('confirmModal');
+    const message = document.getElementById('confirmMessage');
+    if (modal) modal.style.display = 'block';
+    if (message) message.textContent = 'この記録を削除してもよろしいですか？';
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            try {
+                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                closeModal('confirmModal');
+                showNotification('記録を削除しました', 'success');
+                await loadMealRecords();
+                
+                setTimeout(forceRemoveStats, 100);
+                
+            } catch (error) {
+                console.error('記録削除エラー:', error);
+                showNotification('記録の削除に失敗しました', 'error');
+            }
+        };
+    }
+}
+
+// ユーザーデータの削除
+function clearUserData() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+    
+    const modal = document.getElementById('confirmModal');
+    const message = document.getElementById('confirmMessage');
+    if (modal) modal.style.display = 'block';
+    if (message) {
+        message.textContent = 'このユーザーの全ての記録を削除してもよろしいですか？この操作は取り消せません。';
+    }
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            try {
+                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                closeModal('confirmModal');
+                showNotification('全ての記録を削除しました', 'success');
+                await loadMealRecords();
+                
+                setTimeout(forceRemoveStats, 100);
+                
+            } catch (error) {
+                console.error('データ削除エラー:', error);
+                showNotification('データの削除に失敗しました', 'error');
+            }
+        };
+    }
+}
+
+// データダウンロード機能
+async function downloadUserData() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(
+            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        
+        const csvContent = convertToCSV(data);
+        downloadCSV(csvContent, `meal_records_${currentUser.name}.csv`);
+        showNotification('データをダウンロードしました', 'success');
+        
+    } catch (error) {
+        console.error('データダウンロードエラー:', error);
+        showNotification('データのダウンロードに失敗しました', 'error');
+    }
+}
+
+// ユーザーの更新
+async function refreshUsers() {
+    await loadUsers();
+    showNotification('ユーザー一覧を更新しました', 'success');
+    setTimeout(forceRemoveStats, 100);
+}
+
+// CSVへの変換
+function convertToCSV(data) {
+    if (data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const rows = [
+        headers.join(','),
+        ...data.map(row =>
+            headers.map(header => {
+                const value = row[header];
+                return value === null ? '' : JSON.stringify(value);
+            }).join(',')
+        )
+    ];
+    
+    return rows.join('\n');
+}
+
+// CSVのダウンロード
+function downloadCSV(content, filename) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+// 通知の表示
+function showNotification(message, type = 'default') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease forwards';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// イベントリスナーの設定
+function setupEventListeners() {
+    console.log('イベントリスナー設定開始...');
+    
+    // フォームのサブミットイベント
+    const mealForm = document.getElementById('mealForm');
+    if (mealForm) {
+        mealForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (editingId) {
+                updateMealRecord();
+            } else {
+                addMealRecord();
+            }
+        });
+        console.log('フォームイベントリスナー設定完了');
+    } else {
+        console.error('mealForm要素が見つかりません');
+    }
+
+    // ユーザー選択
+    const userSelect = document.getElementById('userSelect');
+    if (userSelect) {
+        userSelect.addEventListener('change', function(e) {
+            if (e.target.value) {
+                switchUser(e.target.value);
+            }
+        });
+        console.log('ユーザー選択イベントリスナー設定完了');
+    } else {
+        console.error('userSelect要素が見つかりません');
+    }
+
+    // ウィンドウクリックイベント（モーダル閉じる）
+    window.onclick = function(event) {
+        const modals = document.getElementsByClassName('modal');
+        for (const modal of modals) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    };
+
+    // Enterキーでユーザー追加
+    const newUserName = document.getElementById('newUserName');
+    if (newUserName) {
+        newUserName.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addUser();
+            }
+        });
+        console.log('ユーザー名入力イベントリスナー設定完了');
+    }
+    
+    console.log('イベントリスナー設定完了');
 }
 
 // フォームデータの取得
@@ -901,231 +1420,6 @@ async function updateMealRecord() {
     } finally {
         if (loadingSpinner) loadingSpinner.style.display = 'none';
     }
-}
-
-// 記録の削除
-function deleteRecord(id) {
-    const modal = document.getElementById('confirmModal');
-    const message = document.getElementById('confirmMessage');
-    if (modal) modal.style.display = 'block';
-    if (message) message.textContent = 'この記録を削除してもよろしいですか？';
-    
-    const confirmBtn = document.getElementById('confirmBtn');
-    if (confirmBtn) {
-        confirmBtn.onclick = async () => {
-            try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                closeModal('confirmModal');
-                showNotification('記録を削除しました', 'success');
-                await loadMealRecords();
-                
-                setTimeout(forceRemoveStats, 100);
-                
-            } catch (error) {
-                console.error('記録削除エラー:', error);
-                showNotification('記録の削除に失敗しました', 'error');
-            }
-        };
-    }
-}
-
-// ユーザーデータの削除
-function clearUserData() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-    
-    const modal = document.getElementById('confirmModal');
-    const message = document.getElementById('confirmMessage');
-    if (modal) modal.style.display = 'block';
-    if (message) {
-        message.textContent = 'このユーザーの全ての記録を削除してもよろしいですか？この操作は取り消せません。';
-    }
-    
-    const confirmBtn = document.getElementById('confirmBtn');
-    if (confirmBtn) {
-        confirmBtn.onclick = async () => {
-            try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-                    }
-                });
-
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-                
-                closeModal('confirmModal');
-                showNotification('全ての記録を削除しました', 'success');
-                await loadMealRecords();
-                
-                setTimeout(forceRemoveStats, 100);
-                
-            } catch (error) {
-                console.error('データ削除エラー:', error);
-                showNotification('データの削除に失敗しました', 'error');
-            }
-        };
-    }
-}
-
-// データダウンロード機能
-async function downloadUserData() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-    
-    try {
-        const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-
-        const data = await response.json();
-        
-        const csvContent = convertToCSV(data);
-        downloadCSV(csvContent, `meal_records_${currentUser.name}.csv`);
-        showNotification('データをダウンロードしました', 'success');
-        
-    } catch (error) {
-        console.error('データダウンロードエラー:', error);
-        showNotification('データのダウンロードに失敗しました', 'error');
-    }
-}
-
-// ユーザーの更新
-async function refreshUsers() {
-    await loadUsers();
-    showNotification('ユーザー一覧を更新しました', 'success');
-    setTimeout(forceRemoveStats, 100);
-}
-
-// CSVへの変換
-function convertToCSV(data) {
-    if (data.length === 0) return '';
-    
-    const headers = Object.keys(data[0]);
-    const rows = [
-        headers.join(','),
-        ...data.map(row =>
-            headers.map(header => {
-                const value = row[header];
-                return value === null ? '' : JSON.stringify(value);
-            }).join(',')
-        )
-    ];
-    
-    return rows.join('\n');
-}
-
-// CSVのダウンロード
-function downloadCSV(content, filename) {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(link.href);
-}
-
-// 通知の表示
-function showNotification(message, type = 'default') {
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease forwards';
-        setTimeout(() => notification.remove(), 300);
-    }, 3000);
-}
-
-// イベントリスナーの設定
-function setupEventListeners() {
-    console.log('イベントリスナー設定開始...');
-    
-    // フォームのサブミットイベント
-    const mealForm = document.getElementById('mealForm');
-    if (mealForm) {
-        mealForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            if (editingId) {
-                updateMealRecord();
-            } else {
-                addMealRecord();
-            }
-        });
-        console.log('フォームイベントリスナー設定完了');
-    } else {
-        console.error('mealForm要素が見つかりません');
-    }
-
-    // ユーザー選択
-    const userSelect = document.getElementById('userSelect');
-    if (userSelect) {
-        userSelect.addEventListener('change', function(e) {
-            if (e.target.value) {
-                switchUser(e.target.value);
-            }
-        });
-        console.log('ユーザー選択イベントリスナー設定完了');
-    } else {
-        console.error('userSelect要素が見つかりません');
-    }
-
-    // ウィンドウクリックイベント（モーダル閉じる）
-    window.onclick = function(event) {
-        const modals = document.getElementsByClassName('modal');
-        for (const modal of modals) {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        }
-    };
-
-    // Enterキーでユーザー追加
-    const newUserName = document.getElementById('newUserName');
-    if (newUserName) {
-        newUserName.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addUser();
-            }
-        });
-        console.log('ユーザー名入力イベントリスナー設定完了');
-    }
-    
-    console.log('イベントリスナー設定完了');
 }
 
 // 初期化
