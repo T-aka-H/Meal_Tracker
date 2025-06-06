@@ -87,17 +87,39 @@ async function getAIDiagnosisFromBackend(mealRecords) {
         const response = await fetch('https://meal-tracker-1-y2dy.onrender.com/api/ai-diagnosis', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify(requestBody)
         });
 
+        // エラーの詳細な情報を取得
+        const responseText = await response.text();
+        console.log('APIレスポンス詳細:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: Object.fromEntries(response.headers.entries()),
+            body: responseText
+        });
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `API エラー: ${response.status}`);
+            let errorMessage;
+            try {
+                const errorData = JSON.parse(responseText);
+                errorMessage = errorData.error || `APIエラー: ${response.status} ${response.statusText}`;
+            } catch (e) {
+                errorMessage = `APIエラー: ${response.status} ${response.statusText}\nレスポンス: ${responseText.substring(0, 200)}...`;
+            }
+            throw new Error(errorMessage);
         }
 
-        const data = await response.json();
+        let data;
+        try {
+            data = JSON.parse(responseText);
+        } catch (e) {
+            console.error('JSONパースエラー:', e);
+            throw new Error(`レスポンスの解析に失敗しました: ${responseText.substring(0, 200)}...`);
+        }
         
         if (!data.success) {
             throw new Error(data.error || '診断に失敗しました');
@@ -113,7 +135,7 @@ async function getAIDiagnosisFromBackend(mealRecords) {
 
     } catch (error) {
         console.error('バックエンドAPI呼び出しエラー:', error);
-        throw new Error('AI診断サービスへの接続に失敗しました。');
+        throw new Error(`AI診断サービスへの接続に失敗しました: ${error.message}`);
     }
 }
 

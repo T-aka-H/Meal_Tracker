@@ -16,4 +16,4 @@ services:
       - key: SUPABASE_ANON_KEY
         sync: false
       - key: SUPABASE_URL
-        value: https://nhnanyzkcxlysugllpde.supabase.co 
+        sync: false 
