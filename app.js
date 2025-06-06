@@ -458,26 +458,27 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
 };
 
-// 初期化 - 統計情報を完全に削除
-document.addEventListener('DOMContentLoaded', function() {
-    loadSupabaseConfig();
-    setDefaultDateTime();
-    
-    // 統計情報を強制削除
-    forceRemoveStats();
-    
-    // 統計情報削除の監視を開始
-    startStatsRemovalWatcher();
-    
-    // フォームのサブミットイベントを設定
-    document.getElementById('mealForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (editingId) {
-            updateMealRecord();
-        } else {
-            addMealRecord();
+// 初期化関数
+async function initialize() {
+    try {
+        // 接続テスト
+        const connected = await testConnection();
+        updateConnectionStatus(connected);
+        
+        if (connected) {
+            await loadUsers();
         }
-    });
+    } catch (error) {
+        console.error('初期化エラー:', error);
+        showNotification('アプリケーションの初期化に失敗しました', 'error');
+    }
+}
+
+// ページ読み込み時の処理
+document.addEventListener('DOMContentLoaded', () => {
+    initialize();
+    setDefaultDateTime();
+    setupEventListeners();
 });
 
 // DOMの変更を監視して統計情報を削除
@@ -1042,55 +1043,30 @@ function getMealFormData() {
 }
 
 // AIアドバイス機能
-async function getAIAdvice() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-
+async function generateAIAdvice(records) {
+    const adviceElement = document.getElementById('aiAdvice');
+    if (!adviceElement || !records || records.length === 0) return;
+    
     try {
-        // ローディング表示
-        const adviceElement = document.getElementById('ai-advice');
-        if (adviceElement) {
-            adviceElement.innerHTML = '<div class="loading">AIアドバイスを生成中...</div>';
-        }
-
-        // 最新の食事記録を取得
-        const response = await fetch(
-            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error('食事記録の取得に失敗しました');
-        }
-
-        const mealRecords = await response.json();
-
-        if (!mealRecords || mealRecords.length === 0) {
-            throw new Error('食事記録が見つかりません');
-        }
-
-        // 食事記録を文字列に整形
-        const mealSummary = mealRecords.map(record => {
-            return `日時: ${new Date(record.datetime).toLocaleString()}\n食事: ${record.food_name}\n種類: ${record.meal_type}\nカロリー: ${record.calories || '不明'}kcal\n場所: ${record.location || '不明'}\n備考: ${record.notes || 'なし'}\n`;
+        // 食事記録のサマリーを作成
+        const mealSummary = records.map(record => {
+            return `日時: ${new Date(record.datetime).toLocaleString()}\n` +
+                   `食事タイプ: ${record.meal_type}\n` +
+                   `食事内容: ${record.food_name}\n` +
+                   `カロリー: ${record.calories || '不明'}\n` +
+                   `場所: ${record.location || '不明'}\n` +
+                   `メモ: ${record.notes || 'なし'}\n`;
         }).join('\n');
 
-        // Cohereを使用してアドバイスを生成（英語）
-        const englishPrompt = `Based on the following meal records, provide detailed dietary advice focusing on health, nutrition, and potential improvements. Include specific recommendations and explanations:\n\n${mealSummary}`;
+        // 英語のアドバイスを生成
+        const englishPrompt = `Based on the following meal records, provide detailed dietary advice focusing on health, nutrition, and areas for improvement. Include specific recommendations and explanations:\n\n${mealSummary}`;
         
-        const englishResponse = await fetch(`${PROXY_URL}/cohere-analyze`, {
+        const englishResponse = await fetch(`${supabaseUrl}/functions/v1/cohere-analyze`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
@@ -1108,10 +1084,12 @@ async function getAIAdvice() {
         // 日本語のアドバイスを生成
         const japanesePrompt = `以下の食事記録に基づいて、健康、栄養、改善点に焦点を当てた詳細な食事アドバイスを提供してください。具体的な推奨事項と説明を含めてください：\n\n${mealSummary}`;
         
-        const japaneseResponse = await fetch(`${PROXY_URL}/cohere-analyze`, {
+        const japaneseResponse = await fetch(`${supabaseUrl}/functions/v1/cohere-analyze`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                 'Accept': 'application/json'
             },
             body: JSON.stringify({
@@ -1127,29 +1105,59 @@ async function getAIAdvice() {
         const japaneseAdvice = await japaneseResponse.json();
         
         // アドバイスを表示
-        if (adviceElement) {
-            adviceElement.innerHTML = `
-                <div class="advice-section">
-                    <h4>AI食事診断</h4>
-                    <div class="advice-content">
-                        <div class="japanese-advice">
-                            <h5>日本語診断:</h5>
-                            ${japaneseAdvice.text.split('\n').join('<br>')}
-                        </div>
-                        <div class="english-advice">
-                            <h5>English Analysis:</h5>
-                            ${englishAdvice.text.split('\n').join('<br>')}
-                        </div>
+        adviceElement.innerHTML = `
+            <div class="advice-section">
+                <h4>AI食事診断</h4>
+                <div class="advice-content">
+                    <div class="japanese-advice">
+                        <h5>日本語アドバイス</h5>
+                        <p>${japaneseAdvice.replace(/\n/g, '<br>')}</p>
+                    </div>
+                    <div class="english-advice">
+                        <h5>English Advice</h5>
+                        <p>${englishAdvice.replace(/\n/g, '<br>')}</p>
                     </div>
                 </div>
-            `;
-        }
+            </div>
+        `;
+        
     } catch (error) {
-        console.error('AIアドバイスエラー:', error);
-        const adviceElement = document.getElementById('ai-advice');
-        if (adviceElement) {
-            adviceElement.innerHTML = `<p class="error">申し訳ありません。アドバイスの取得中にエラーが発生しました。<br>${error.message}</p>`;
-        }
-        showNotification(error.message, 'error');
+        console.error('AIアドバイス生成エラー:', error);
+        adviceElement.innerHTML = `
+            <div class="advice-section error">
+                <h4>AI食事診断</h4>
+                <p>申し訳ありません。アドバイスの生成に失敗しました。</p>
+                <p>エラー: ${error.message}</p>
+            </div>
+        `;
     }
+}
+
+// イベントリスナーの設定
+function setupEventListeners() {
+    // フォームのサブミットイベントを設定
+    document.getElementById('mealForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (editingId) {
+            updateMealRecord();
+        } else {
+            addMealRecord();
+        }
+    });
+
+    // ユーザー選択の変更イベントを設定
+    document.getElementById('userSelect').addEventListener('change', function(e) {
+        const selectedUserId = e.target.value;
+        if (selectedUserId) {
+            currentUserId = selectedUserId;
+            currentUser = allUsers.find(user => user.id === selectedUserId);
+            loadMealRecords();
+        }
+    });
+
+    // 新規ユーザー追加フォームのサブミットイベントを設定
+    document.getElementById('addUserForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        addUser();
+    });
 }
