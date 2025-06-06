@@ -437,14 +437,14 @@ async function connectSupabase() {
         supabaseInstance = null;
 
         // 新しいSupabaseクライアントを作成
-        supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+        supabase = window.supabase.createClient(getSupabaseUrl(), getSupabaseKey());
 
         // プロキシサーバー経由でアクセス
         const response = await fetch(`${PROXY_URL}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
-                'apikey': supabaseAnonKey,
-                'Authorization': `Bearer ${supabaseAnonKey}`,
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
                 'Accept': 'application/json'
             }
         });
@@ -462,18 +462,13 @@ async function connectSupabase() {
 
         await loadUsers();
         
+        showNotification('Supabaseに接続しました', 'success');
+        return true;
+
     } catch (error) {
         console.error('Supabase接続エラー:', error);
-        const errorMessage = error.message || error.error_description || 'Unknown error';
-        showNotification('接続に失敗しました: ' + errorMessage, 'error');
-        
-        // エラーの詳細をコンソールに出力
-        if (error.status) {
-            console.error('Status:', error.status);
-        }
-        if (error.statusText) {
-            console.error('Status Text:', error.statusText);
-        }
+        showNotification('Supabaseへの接続に失敗しました', 'error');
+        return false;
     }
 }
 
