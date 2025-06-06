@@ -543,50 +543,34 @@ function initializeAIDiagnosis() {
     }
 }
 
-// 統計情報を強制削除する関数
+// 統計情報の削除
 function forceRemoveStats() {
-    const statsSelectors = [
-        '#userStats',
-        '.user-stats',
-        '.stat-row',
-        '.stat-value',
-        '.stat-label',
-        '[class*="stat"]',
-        '[id*="stat"]',
-        '[class*="Stats"]',
-        '[id*="Stats"]',
-        '.statistics',
-        '.statistics-container',
-        '.user-statistics',
-        '.stats-wrapper',
-        '.stats-container',
-        '.stats-grid',
-        '.stats-box',
-        '[class*="statistics"]',
-        '[id*="statistics"]'
-    ];
-    
-    statsSelectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(element => {
-            if (element && 
-                !element.closest('#currentUserDisplay') && 
-                !element.closest('#recordsList') && 
-                !element.closest('.record-item') && 
-                element.id !== 'currentUserName' && 
-                element.id !== 'currentUserDisplay') {
-                element.remove();
-                console.log(`削除した要素: ${selector}`);
-            }
-        });
+    const stats = document.querySelectorAll('[class*="stat"]');
+    stats.forEach(stat => {
+        stat.remove();
+        console.log('削除した要素:', stat);
     });
 }
 
-// 定期的に統計情報を削除する監視機能
+// 統計情報の監視と削除
 function startStatsRemovalWatcher() {
-    setInterval(() => {
-        forceRemoveStats();
-    }, 500);
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.addedNodes.length) {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.classList && Array.from(node.classList).some(c => c.includes('stat'))) {
+                        node.remove();
+                        console.log('動的に追加された統計要素を削除:', node);
+                    }
+                });
+            }
+        });
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
 }
 
 // 日付と時間のデフォルト値を設定
