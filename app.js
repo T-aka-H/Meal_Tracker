@@ -78,13 +78,12 @@ function setDefaultDateTime() {
     }
 }
 
-// Supabaseへの接続（デバッグ版）
+// Supabaseへの接続
 async function connectSupabase() {
     try {
         console.log('🔄 Supabase接続開始...');
         console.log('📍 接続先URL:', supabaseUrl);
         console.log('🔑 APIキー（最初の20文字）:', SUPABASE_ANON_KEY.substring(0, 20) + '...');
-        console.log('🔑 APIキー（最後の10文字）:', '...' + SUPABASE_ANON_KEY.substring(SUPABASE_ANON_KEY.length - 10));
         
         // APIキーの有効期限をチェック
         try {
@@ -104,20 +103,8 @@ async function connectSupabase() {
             throw new Error('Supabase SDKが読み込まれていません');
         }
 
-        // まず、プロジェクトの基本情報を取得してみる
-        console.log('🔄 プロジェクト情報取得テスト...');
-        const healthResponse = await fetch(`${supabaseUrl}/rest/v1/`, {
-            method: 'GET',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-            }
-        });
-        
-        console.log('🏥 ヘルスチェックレスポンス:', healthResponse.status);
-        
-        // 接続テスト - usersテーブル
-        console.log('🔄 usersテーブル接続テスト開始...');
+        // 接続テスト
+        console.log('🔄 接続テスト開始...');
         const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
@@ -129,24 +116,16 @@ async function connectSupabase() {
         });
 
         console.log('📊 接続テストレスポンス:', response.status);
-        console.log('📊 レスポンスヘッダー:', Object.fromEntries(response.headers));
 
         if (!response.ok) {
             const errorText = await response.text();
             console.error('❌ 接続テストエラー詳細:', errorText);
             
-            // より詳細なエラー情報
             if (response.status === 401) {
-                console.error('🔑 認証エラー: APIキーまたは権限の問題');
-                console.log('💡 確認事項:');
-                console.log('   1. Supabaseダッシュボードでプロジェクトが有効か');
-                console.log('   2. RLSポリシーが正しく設定されているか');
-                console.log('   3. APIキーが最新のものか');
-            } else if (response.status === 404) {
-                console.error('📋 テーブルが見つからない: usersテーブルが存在しない可能性');
+                throw new Error('APIキーが無効です。Supabaseダッシュボードで最新のAPIキーを確認してください。');
+            } else {
+                throw new Error(`接続テストに失敗: ${response.status} - ${errorText}`);
             }
-            
-            throw new Error(`接続テストに失敗: ${response.status} - ${errorText}`);
         }
 
         const data = await response.json();
@@ -165,11 +144,6 @@ async function connectSupabase() {
 
     } catch (error) {
         console.error('❌ Supabase接続エラー:', error);
-        console.log('🔍 エラー詳細:', {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-        });
         showNotification(`Supabaseへの接続に失敗しました: ${error.message}`, 'error');
         updateConnectionStatus(false);
         return false;
@@ -669,4 +643,479 @@ async function updateMealRecord() {
     if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
     
     try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq
+        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${editingId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'prefer': 'return=minimal'
+            },
+            body: JSON.stringify(record)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        showNotification('記録を更新しました', 'success');
+        editingId = null;
+        const form = document.getElementById('mealForm');
+        if (form) form.reset();
+        setDefaultDateTime();
+        const submitBtn = document.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.textContent = '📝 記録を追加';
+        await loadMealRecords();
+        
+        setTimeout(forceRemoveStats, 100);
+        
+    } catch (error) {
+        console.error('記録更新エラー:', error);
+        showNotification('記録の更新に失敗しました', 'error');
+    } finally {
+        if (loadingSpinner) loadingSpinner.style.display = 'none';
+    }
+}
+
+// 記録の削除
+function deleteRecord(id) {
+    const modal = document.getElementById('confirmModal');
+    const message = document.getElementById('confirmMessage');
+    if (modal) modal.style.display = 'block';
+    if (message) message.textContent = 'この記録を削除してもよろしいですか？';
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            try {
+                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': getSupabaseKey(),
+                        'Authorization': `Bearer ${getSupabaseKey()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                closeModal('confirmModal');
+                showNotification('記録を削除しました', 'success');
+                await loadMealRecords();
+                
+                setTimeout(forceRemoveStats, 100);
+                
+            } catch (error) {
+                console.error('記録削除エラー:', error);
+                showNotification('記録の削除に失敗しました', 'error');
+            }
+        };
+    }
+}
+
+// ユーザーデータの削除
+function clearUserData() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+    
+    const modal = document.getElementById('confirmModal');
+    const message = document.getElementById('confirmMessage');
+    if (modal) modal.style.display = 'block';
+    if (message) {
+        message.textContent = 'このユーザーの全ての記録を削除してもよろしいですか？この操作は取り消せません。';
+    }
+    
+    const confirmBtn = document.getElementById('confirmBtn');
+    if (confirmBtn) {
+        confirmBtn.onclick = async () => {
+            try {
+                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'apikey': getSupabaseKey(),
+                        'Authorization': `Bearer ${getSupabaseKey()}`
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                closeModal('confirmModal');
+                showNotification('全ての記録を削除しました', 'success');
+                await loadMealRecords();
+                
+                setTimeout(forceRemoveStats, 100);
+                
+            } catch (error) {
+                console.error('データ削除エラー:', error);
+                showNotification('データの削除に失敗しました', 'error');
+            }
+        };
+    }
+}
+
+// データダウンロード機能
+async function downloadUserData() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(
+            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        
+        const csvContent = convertToCSV(data);
+        downloadCSV(csvContent, `meal_records_${currentUser.name}.csv`);
+        showNotification('データをダウンロードしました', 'success');
+        
+    } catch (error) {
+        console.error('データダウンロードエラー:', error);
+        showNotification('データのダウンロードに失敗しました', 'error');
+    }
+}
+
+// ユーザーの更新
+async function refreshUsers() {
+    await loadUsers();
+    showNotification('ユーザー一覧を更新しました', 'success');
+    setTimeout(forceRemoveStats, 100);
+}
+
+// CSVへの変換
+function convertToCSV(data) {
+    if (data.length === 0) return '';
+    
+    const headers = Object.keys(data[0]);
+    const rows = [
+        headers.join(','),
+        ...data.map(row =>
+            headers.map(header => {
+                const value = row[header];
+                return value === null ? '' : JSON.stringify(value);
+            }).join(',')
+        )
+    ];
+    
+    return rows.join('\n');
+}
+
+// CSVのダウンロード
+function downloadCSV(content, filename) {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+// 通知の表示
+function showNotification(message, type = 'default') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease forwards';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// イベントリスナーの設定
+function setupEventListeners() {
+    console.log('イベントリスナー設定開始...');
+    
+    // フォームのサブミットイベント
+    const mealForm = document.getElementById('mealForm');
+    if (mealForm) {
+        mealForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            if (editingId) {
+                updateMealRecord();
+            } else {
+                addMealRecord();
+            }
+        });
+        console.log('フォームイベントリスナー設定完了');
+    } else {
+        console.error('mealForm要素が見つかりません');
+    }
+
+    // ユーザー選択
+    const userSelect = document.getElementById('userSelect');
+    if (userSelect) {
+        userSelect.addEventListener('change', function(e) {
+            if (e.target.value) {
+                switchUser(e.target.value);
+            }
+        });
+        console.log('ユーザー選択イベントリスナー設定完了');
+    } else {
+        console.error('userSelect要素が見つかりません');
+    }
+
+    // ウィンドウクリックイベント（モーダル閉じる）
+    window.onclick = function(event) {
+        const modals = document.getElementsByClassName('modal');
+        for (const modal of modals) {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    };
+
+    // Enterキーでユーザー追加
+    const newUserName = document.getElementById('newUserName');
+    if (newUserName) {
+        newUserName.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addUser();
+            }
+        });
+        console.log('ユーザー名入力イベントリスナー設定完了');
+    }
+    
+    console.log('イベントリスナー設定完了');
+}
+
+// 初期化
+async function initialize() {
+    console.log('アプリケーション初期化開始');
+    
+    // デフォルト日時設定
+    setDefaultDateTime();
+    
+    // 統計情報削除
+    forceRemoveStats();
+    startStatsRemovalWatcher();
+    
+    // イベントリスナー設定
+    setupEventListeners();
+    
+    // Supabase接続
+    const connected = await connectSupabase();
+    if (!connected) {
+        console.error('Supabase接続に失敗しました');
+        return;
+    }
+    
+    console.log('アプリケーション初期化完了');
+}
+
+// DOMContentLoaded イベント
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM読み込み完了');
+    initialize();
+});
+
+// DOMの変更を監視して統計情報を削除
+const observer = new MutationObserver((mutations) => {
+    let needsCleanup = false;
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+            needsCleanup = true;
+        }
+    });
+    if (needsCleanup) {
+        setTimeout(forceRemoveStats, 100);
+    }
+});
+
+// 監視を開始（ページ読み込み後）
+window.addEventListener('load', function() {
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
+
+// デバッグ用のテスト関数
+async function debugTest() {
+    console.log('デバッグテスト開始');
+    
+    try {
+        const result = await supabase
+            .from('users')
+            .insert([{ name: 'テストユーザー2024' }]);
+        
+        console.log('成功:', result);
+    } catch (error) {
+        console.error('エラー:', error);
+    }
+}
+
+// ユーザー数を更新する関数
+function updateUserCount(count) {
+    const userCountElement = document.getElementById('userCount');
+    if (userCountElement) {
+        userCountElement.textContent = count;
+    }
+    console.log('ユーザー数を更新:', count);
+}
+
+// 全ユーザーデータのダウンロード
+async function downloadAllData() {
+    try {
+        const { data, error } = await supabase
+            .from('meal_records')
+            .select('*, users!inner(*)')
+            .order('datetime', { ascending: false });
+        
+        if (error) throw error;
+        
+        const processedData = data.map(record => ({
+            ...record,
+            user_name: record.users.name
+        }));
+        
+        const csvContent = convertToCSV(processedData);
+        downloadCSV(csvContent, 'all_meal_records.csv');
+        showNotification('全データをダウンロードしました', 'success');
+        
+    } catch (error) {
+        console.error('全データダウンロードエラー:', error);
+        showNotification('データのダウンロードに失敗しました', 'error');
+    }
+}
+
+// AIアドバイス機能
+async function getAIAdvice() {
+    if (!currentUserId) {
+        showNotification('ユーザーを選択してください', 'error');
+        return;
+    }
+
+    try {
+        // ローディング表示
+        const adviceElement = document.getElementById('ai-advice');
+        if (adviceElement) {
+            adviceElement.innerHTML = '<div class="loading">AIアドバイスを生成中...</div>';
+        }
+
+        // 最新の食事記録を取得
+        const response = await fetch(
+            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('食事記録の取得に失敗しました');
+        }
+
+        const mealRecords = await response.json();
+
+        if (!mealRecords || mealRecords.length === 0) {
+            if (adviceElement) {
+                adviceElement.innerHTML = '<p>食事記録が見つかりません。まず食事を記録してください。</p>';
+            }
+            return;
+        }
+
+        // 食事記録を文字列に整形
+        const mealSummary = mealRecords.map(record => {
+            return `日時: ${new Date(record.datetime).toLocaleString()}\n食事: ${record.food_name}\n種類: ${record.meal_type}\nカロリー: ${record.calories || '不明'}kcal\n場所: ${record.location || '不明'}\n備考: ${record.notes || 'なし'}\n`;
+        }).join('\n');
+
+        // 簡易的なアドバイス生成（実際のAI APIは使用せず、パターンベースで生成）
+        const advice = generateSimpleAdvice(mealRecords);
+        
+        // アドバイスを表示
+        if (adviceElement) {
+            adviceElement.innerHTML = `
+                <div class="advice-section">
+                    <h4>食事診断</h4>
+                    <div class="advice-content">
+                        <div class="japanese-advice">
+                            ${advice}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('AIアドバイスエラー:', error);
+        const adviceElement = document.getElementById('ai-advice');
+        if (adviceElement) {
+            adviceElement.innerHTML = `<p class="error">申し訳ありません。アドバイスの取得中にエラーが発生しました。<br>${error.message}</p>`;
+        }
+        showNotification(error.message, 'error');
+    }
+}
+
+// 簡易的なアドバイス生成
+function generateSimpleAdvice(records) {
+    const mealTypes = records.map(r => r.meal_type);
+    const foods = records.map(r => r.food_name);
+    const calories = records.filter(r => r.calories).map(r => r.calories);
+    
+    let advice = '<h5>食事パターン分析:</h5>';
+    
+    // 食事回数の分析
+    const mealTypeCount = {};
+    mealTypes.forEach(type => {
+        mealTypeCount[type] = (mealTypeCount[type] || 0) + 1;
+    });
+    
+    advice += '<ul>';
+    Object.entries(mealTypeCount).forEach(([type, count]) => {
+        advice += `<li>${type}: ${count}回</li>`;
+    });
+    advice += '</ul>';
+    
+    // カロリー分析
+    if (calories.length > 0) {
+        const avgCalories = Math.round(calories.reduce((a, b) => a + b, 0) / calories.length);
+        advice += `<h5>平均カロリー: ${avgCalories}kcal</h5>`;
+        
+        if (avgCalories > 800) {
+            advice += '<p>カロリーが高めです。野菜を多く取り入れることをお勧めします。</p>';
+        } else if (avgCalories < 300) {
+            advice += '<p>カロリーが低めです。バランスの取れた食事を心がけましょう。</p>';
+        } else {
+            advice += '<p>適度なカロリー摂取ですね。この調子を続けましょう。</p>';
+        }
+    }
+    
+    // 一般的なアドバイス
+    advice += '<h5>おすすめ:</h5>';
+    advice += '<ul>';
+    advice += '<li>1日3食、規則正しく食事をとりましょう</li>';
+    advice += '<li>野菜を多く取り入れ、バランスの良い食事を心がけましょう</li>';
+    advice += '<li>適度な運動も健康には大切です</li>';
+    advice += '</ul>';
+    
+    return advice;
+}
