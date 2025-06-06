@@ -44,6 +44,8 @@ function forceRemoveStats() {
         elements.forEach(element => {
             if (element && 
                 !element.closest('#currentUserDisplay') && // ユーザー表示の親要素をチェック
+                !element.closest('#recordsList') && // 食事記録リストの親要素をチェック
+                !element.closest('.record-item') && // 個別の食事記録要素をチェック
                 element.id !== 'currentUserName' && 
                 element.id !== 'currentUserDisplay') {
                 element.remove();
@@ -57,11 +59,14 @@ function forceRemoveStats() {
     allElements.forEach(element => {
         if (!element || !element.textContent) return;
         
-        // ユーザー表示要素は削除しない
+        // 保護する要素をチェック
         if (element.id === 'currentUserName' || 
             element.id === 'currentUserDisplay' ||
             element.closest('#currentUserDisplay') ||
-            element.closest('#userSection')) {
+            element.closest('#userSection') ||
+            element.closest('#recordsList') ||
+            element.closest('.record-item') ||
+            element.closest('.records-section')) {
             return;
         }
         
@@ -86,7 +91,6 @@ function forceRemoveStats() {
         // 統計情報らしき数値パターン
         const isStatsNumber = (
             /^[0-9]+件$/.test(text) ||
-            /^[0-9]+kcal$/.test(text) ||
             text === '4' ||
             text === '300'
         );
@@ -104,10 +108,13 @@ function forceRemoveStats() {
                    depth < maxDepth && 
                    parentToRemove.parentNode !== document.body && 
                    parentToRemove.parentNode !== document.documentElement) {
-                // ユーザー表示要素の親要素は削除しない
+                // 保護する要素の親要素は削除しない
                 if (parentToRemove.querySelector('#currentUserName') || 
                     parentToRemove.querySelector('#currentUserDisplay') ||
-                    parentToRemove.closest('#userSection')) {
+                    parentToRemove.closest('#userSection') ||
+                    parentToRemove.closest('#recordsList') ||
+                    parentToRemove.closest('.record-item') ||
+                    parentToRemove.closest('.records-section')) {
                     return;
                 }
                 
@@ -135,7 +142,10 @@ function forceRemoveStats() {
                 parentToRemove !== document.documentElement &&
                 !parentToRemove.contains(document.getElementById('currentUserName')) &&
                 !parentToRemove.contains(document.getElementById('currentUserDisplay')) &&
-                !parentToRemove.closest('#userSection')) {
+                !parentToRemove.closest('#userSection') &&
+                !parentToRemove.closest('#recordsList') &&
+                !parentToRemove.closest('.record-item') &&
+                !parentToRemove.closest('.records-section')) {
                 parentToRemove.remove();
                 console.log(`統計情報を含む要素を削除: ${text}`);
             }
@@ -784,29 +794,17 @@ async function addMealRecord() {
 
 // 食事記録の表示
 function displayMealRecords(records) {
-    console.log('displayMealRecords開始:', records);
-    const recordsContainer = document.getElementById('recordsList');
-    console.log('recordsContainer:', recordsContainer);
-    
-    if (!recordsContainer) {
-        console.error('recordsContainerが見つかりません');
-        return;
-    }
-
+    const recordsList = document.getElementById('recordsList');
     if (!records || records.length === 0) {
-        console.log('記録なし - 空のメッセージを表示');
-        recordsContainer.innerHTML = '<p class="no-records">記録がありません</p>';
+        recordsList.innerHTML = '<div class="empty-state">記録がありません</div>';
         return;
     }
-
-    const recordsHTML = records.map(record => {
-        const element = createRecordElement(record);
-        console.log('作成された記録要素:', element);
-        return element;
-    }).join('');
     
-    console.log('最終的なHTML:', recordsHTML);
-    recordsContainer.innerHTML = recordsHTML;
+    recordsList.innerHTML = '';
+    records.forEach(record => {
+        const recordElement = createRecordElement(record);
+        recordsList.appendChild(recordElement);
+    });
 }
 
 // 記録要素の作成
