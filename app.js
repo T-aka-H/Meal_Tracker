@@ -524,26 +524,99 @@ function addAIDiagnosisStyles() {
     document.head.appendChild(style);
 }
 
-// 初期化時にAI診断機能を追加
-function initializeAIDiagnosis() {
-    // DOM読み込み完了後に要素を追加
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                addAIDiagnosisElements();
-                addPromptEditorSection();
-                addAIDiagnosisStyles();
-            }, 1000);
+// app.jsの initializeSupabase 関数を以下のように修正
+
+async function initializeSupabase() {
+    console.log('🔄 Supabase接続開始...');
+    const statusDiv = document.getElementById('connectionStatus');
+    if (statusDiv) {
+        statusDiv.textContent = 'データベース接続中...';
+        statusDiv.className = 'status';
+    }
+
+    try {
+        // Supabaseクライアントの初期化（タイムアウトを延長）
+        const initPromise = new Promise(async (resolve, reject) => {
+            try {
+                // createClientの前にsupabaseが読み込まれているか確認
+                if (typeof window.supabase === 'undefined') {
+                    throw new Error('Supabaseライブラリが読み込まれていません');
+                }
+
+                supabaseClient = window.supabase.createClient(
+                    config.supabaseUrl,
+                    config.supabaseAnonKey
+                );
+                
+                console.log('✅ Supabaseクライアント作成成功');
+                resolve();
+            } catch (error) {
+                reject(error);
+            }
         });
-    } else {
-        setTimeout(() => {
-            addAIDiagnosisElements();
-            addPromptEditorSection();
-            addAIDiagnosisStyles();
-        }, 1000);
+
+        // タイムアウトを10秒に延長
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('createClient関数の待機がタイムアウトしました')), 10000);
+        });
+
+        await Promise.race([initPromise, timeoutPromise]);
+
+        // 接続テストを実行（リトライ付き）
+        let testSuccess = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (!testSuccess && retryCount < maxRetries) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('meal_records')
+                    .select('id')
+                    .limit(1);
+
+                if (error) {
+                    throw error;
+                }
+
+                console.log('📊 接続テスト成功');
+                testSuccess = true;
+                
+                if (statusDiv) {
+                    statusDiv.textContent = '✅ データベース接続完了';
+                    statusDiv.className = 'status success';
+                }
+            } catch (error) {
+                retryCount++;
+                console.warn(`📊 接続テスト失敗 (試行 ${retryCount}/${maxRetries}):`, error.message);
+                
+                if (retryCount < maxRetries) {
+                    // 再試行前に少し待つ
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    throw error;
+                }
+            }
+        }
+
+    } catch (error) {
+        console.error('❌ Supabase接続エラー:', error);
+        
+        if (statusDiv) {
+            statusDiv.textContent = '❌ データベース接続失敗';
+            statusDiv.className = 'status error';
+        }
+        
+        // エラーメッセージを表示
+        showNotification(
+            'データベースへの接続に失敗しました。ページを再読み込みしてください。',
+            'error'
+        );
+        
+        // Supabaseクライアントをnullに設定
+        supabaseClient = null;
+        throw error;
     }
 }
-
 // 統計情報の削除
 function forceRemoveStats() {
     const stats = document.querySelectorAll('[class*="stat"]');
