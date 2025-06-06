@@ -13,9 +13,9 @@ const cohere = new CohereClient({
 
 // CORSの設定
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGIN || 'http://localhost:5500',
+    origin: '*',  // 開発中は全てのオリジンを許可
     methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type']
+    allowedHeaders: ['Content-Type', 'Accept']
 }));
 
 // JSONボディの解析

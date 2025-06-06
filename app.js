@@ -1110,7 +1110,8 @@ async function getAIAdvice() {
         const englishResponse = await fetch(`${PROXY_URL}/cohere-analyze`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 prompt: englishPrompt,
@@ -1130,7 +1131,8 @@ async function getAIAdvice() {
         const japaneseResponse = await fetch(`${PROXY_URL}/cohere-analyze`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
             body: JSON.stringify({
                 prompt: japanesePrompt,
