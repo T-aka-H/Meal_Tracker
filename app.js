@@ -13,7 +13,7 @@ const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk2MjQzNDgsImV4cCI6MjAyNTIwMDM0OH0.KqKilHHzKxXmwnDGqEDqMDGZ_E5MmGGHN-JQ9lNJVGE';
 
 // プロキシサーバーのURL
-const PROXY_URL = 'https://meal-tracker-1-y2dy.onrender.com';
+const PROXY_URL = 'https://meal-tracker-2-jyq6.onrender.com';
 
 // 統計情報を強制削除する関数
 function forceRemoveStats() {
