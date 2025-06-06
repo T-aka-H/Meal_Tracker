@@ -14,22 +14,6 @@
         </header>
         
         <main>
-            <!-- AI診断セクション -->
-            <div class="ai-diagnosis-section">
-                <div class="diagnosis-column">
-                    <h3>AI食事診断（日本語）</h3>
-                    <div id="diagnosisJa" class="diagnosis-content">
-                        <!-- 診断結果がここに表示されます -->
-                    </div>
-                </div>
-                <div class="diagnosis-column">
-                    <h3>AI Meal Analysis (English)</h3>
-                    <div id="diagnosisEn" class="diagnosis-content">
-                        <!-- Diagnosis results will be displayed here -->
-                    </div>
-                </div>
-            </div>
-            
             <!-- 接続状態表示 -->
             <div id="connectionStatus" class="status"></div>
             
@@ -52,6 +36,22 @@
                     <button onclick="showDeleteUserModal()" class="delete-button">🗑️ ユーザー削除</button>
                     <button onclick="downloadUserData()" class="download-button">📥 データダウンロード</button>
                     <button onclick="clearUserData()" class="clear-button">🗑️ 全記録削除</button>
+                </div>
+            </div>
+            
+            <!-- AI診断セクション（ユーザー管理の下、食事記録の上に移動） -->
+            <div class="ai-diagnosis-section">
+                <div class="diagnosis-column">
+                    <h3>AI食事診断（日本語）</h3>
+                    <div id="diagnosisJa" class="diagnosis-content">
+                        <!-- 診断結果がここに表示されます -->
+                    </div>
+                </div>
+                <div class="diagnosis-column">
+                    <h3>AI Meal Analysis (English)</h3>
+                    <div id="diagnosisEn" class="diagnosis-content">
+                        <!-- Diagnosis results will be displayed here -->
+                    </div>
                 </div>
             </div>
             
