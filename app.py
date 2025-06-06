@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 # 環境変数の読み込み
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 CORS(app)  # CORS設定でフロントエンドからのアクセスを許可
 
 # 環境変数から設定を取得
@@ -112,14 +112,13 @@ def proxy(path):
         logger.error(f"Proxy Error: {e}")
         return {'error': f'Internal server error: {str(e)}'}, 500
 
-# === 新しいAI診断機能 ===
 @app.route('/')
-def index():
-    """メインページ - 既存のHTMLファイルを返す"""
-    try:
-        return send_from_directory('.', 'index.html')
-    except FileNotFoundError:
-        return "index.html not found", 404
+def serve_static():
+    return send_from_directory('.', 'index.html')
+
+@app.route('/<path:path>')
+def serve_file(path):
+    return send_from_directory('.', path)
 
 @app.route('/app.js')
 def serve_js():
@@ -145,12 +144,20 @@ def ai_diagnosis():
         return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({'error': 'リクエストボディが空です'}), 400
+            
         meal_records = data.get('meal_records', [])
         custom_prompt = data.get('custom_prompt', DEFAULT_PROMPT_TEMPLATE)
+        
         if not meal_records:
             return jsonify({'error': '食事記録が提供されていません'}), 400
+            
+        logger.info(f'食事記録数: {len(meal_records)}')
         meal_summary = format_meal_records_for_ai(meal_records)
         prompt = custom_prompt.format(meal_summary=meal_summary)
+        
+        logger.info('COHERE APIにリクエスト送信')
         cohere_response = requests.post(
             'https://api.cohere.ai/v1/generate',
             headers={
@@ -168,17 +175,22 @@ def ai_diagnosis():
             },
             timeout=30
         )
+        
         if cohere_response.status_code != 200:
             error_msg = f"COHERE API エラー: {cohere_response.status_code}"
             logger.error(f"{error_msg}: {cohere_response.text}")
             return jsonify({'error': error_msg}), 500
+            
         cohere_data = cohere_response.json()
         diagnosis = cohere_data['generations'][0]['text'].strip()
+        
+        logger.info('AI診断完了')
         return jsonify({
             'success': True,
             'diagnosis': diagnosis,
             'meal_count': len(meal_records)
         })
+        
     except requests.exceptions.Timeout:
         logger.error('COHERE API タイムアウト')
         return jsonify({'error': 'AI診断がタイムアウトしました。しばらく時間をおいて再度お試しください。'}), 504
@@ -309,12 +321,16 @@ def test_cohere():
         }), 500
 
 @app.errorhandler(404)
-def not_found(error):
-    return jsonify({'error': 'エンドポイントが見つかりません'}), 404
+def not_found_error(error):
+    return jsonify({'error': 'Not Found', 'message': 'The requested resource was not found'}), 404
 
 @app.errorhandler(500)
 def internal_error(error):
-    return jsonify({'error': '内部サーバーエラーが発生しました'}), 500
+    return jsonify({'error': 'Internal Server Error', 'message': str(error)}), 500
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    return jsonify({'error': 'Method Not Allowed', 'message': 'The method is not allowed for the requested URL'}), 405
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
