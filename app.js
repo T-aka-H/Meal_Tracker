@@ -12,8 +12,10 @@ let supabaseInstance = null;
 const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk2MjQzNDgsImV4cCI6MjAyNTIwMDM0OH0.KqKilHHzKxXmwnDGqEDqMDGZ_E5MmGGHN-JQ9lNJVGE';
 
-// プロキシサーバーのURL
-const PROXY_URL = 'https://meal-tracker-2-jyq6.onrender.com';
+// プロキシサーバーのURL（環境に応じて変更）
+const PROXY_URL = location.hostname === 'localhost' 
+    ? 'http://localhost:8080'
+    : 'https://meal-tracker-1-y2dy.onrender.com';
 
 // 統計情報を強制削除する関数
 function forceRemoveStats() {
@@ -445,7 +447,8 @@ async function connectSupabase() {
             headers: {
                 'apikey': getSupabaseKey(),
                 'Authorization': `Bearer ${getSupabaseKey()}`,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             }
         });
 
@@ -1076,13 +1079,14 @@ async function getAIAdvice() {
 
         // 最新の食事記録を取得
         const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
+            `${PROXY_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
             {
                 method: 'GET',
                 headers: {
                     'apikey': getSupabaseKey(),
                     'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
                 }
             }
         );
@@ -1143,7 +1147,7 @@ async function getAIAdvice() {
         }
 
         const japaneseAdvice = await japaneseResponse.json();
-
+        
         // アドバイスを表示
         if (adviceElement) {
             adviceElement.innerHTML = `
