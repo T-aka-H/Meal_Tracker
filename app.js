@@ -84,7 +84,7 @@ async function getAIDiagnosisFromBackend(mealRecords) {
             requestBody.custom_prompt = customPromptTemplate;
         }
 
-        const response = await fetch('https://meal-tracker-1-y2dy.onrender.com/api/ai-diagnosis', {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

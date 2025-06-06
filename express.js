@@ -21,6 +21,69 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// 必要なパッケージをインポート（まだインポートしていない場合）
+const axios = require('axios');
+
+// Cohere APIキー（環境変数から取得）
+const COHERE_API_KEY = process.env.COHERE_API_KEY;
+
+// AI診断エンドポイントを追加
+app.post('/api/ai-diagnosis', async (req, res) => {
+    try {
+        const { records } = req.body;
+        
+        if (!records || !Array.isArray(records) || records.length === 0) {
+            return res.status(400).json({
+                error: '有効な記録データが必要です'
+            });
+        }
+
+        // 食事記録を文字列に変換
+        let mealSummary = "過去の食事記録:\n\n";
+        records.forEach(record => {
+            const date = new Date(record.datetime);
+            const dateStr = date.toLocaleDateString('ja-JP');
+            const timeStr = date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+            mealSummary += `${dateStr} ${timeStr} - ${record.meal_type}: ${record.food_name}\n`;
+        });
+
+        // Cohereにリクエスト
+        const cohereResponse = await axios.post('https://api.cohere.ai/v1/generate', {
+            model: 'command',
+            prompt: `あなたは優秀な栄養士です。以下の食事記録を分析し、アドバイスをしてください。\n\n${mealSummary}\n\n【総合スコア】(100点満点)、【良い点】、【改善点】の形式で回答してください。`,
+            max_tokens: 500,
+            temperature: 0.7
+        }, {
+            headers: {
+                'Authorization': `Bearer ${COHERE_API_KEY}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const analysisText = cohereResponse.data.generations[0].text;
+        
+        // スコアを抽出（簡易版）
+        const scoreMatch = analysisText.match(/【総合スコア】\s*(\d+)/);
+        const score = scoreMatch ? parseInt(scoreMatch[1]) : 70;
+
+        res.json({
+            diagnosis: {
+                score: score,
+                summary: '診断が完了しました',
+                recommendations: ['食事記録を継続してください'],
+                fullAnalysis: analysisText
+            },
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (error) {
+        console.error('AI診断エラー:', error.message);
+        res.status(500).json({
+            error: 'AI診断の処理中にエラーが発生しました'
+        });
+    }
+});
+
 // ヘルスチェックエンドポイント
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', message: 'サーバーは正常に動作しています' });
