@@ -63,47 +63,58 @@ async function getAIFoodDiagnosis() {
     }
 }
 
-// バックエンドAPIを使用して食事診断を取得
-async function getAIDiagnosisFromBackend(mealRecords) {
-    try {
-        // カスタムプロンプトを取得
-        let customPromptJa = localStorage.getItem('customPromptJa');
-        let customPromptEn = localStorage.getItem('customPromptEn');
+// HTML要素の追加（修正版 - ユーザー設定の下に配置）
+function addAIDiagnosisElements() {
+    // 既にAI診断セクションが存在する場合は追加しない
+    if (document.getElementById('aiDiagnosisBtn')) {
+        return;
+    }
 
-        console.log('AI診断リクエスト:', { 
-            meal_records: mealRecords,
-            custom_prompt_ja: customPromptJa,
-            custom_prompt_en: customPromptEn
-        });  // デバッグ用
+    // currentUserDisplayの直後に追加する
+    const currentUserDisplay = document.getElementById('currentUserDisplay');
+    if (!currentUserDisplay) {
+        console.error('currentUserDisplay要素が見つかりません');
+        return;
+    }
 
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                meal_records: mealRecords,
-                custom_prompt_ja: customPromptJa,
-                custom_prompt_en: customPromptEn
-            })
-        });
+    const aiDiagnosisSection = document.createElement('div');
+    aiDiagnosisSection.innerHTML = `
+        <div class="ai-diagnosis-control-section" style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <h4 style="color: #1f2937; margin-bottom: 10px;">🤖 AI食事診断</h4>
+            <p style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
+                過去1週間の食事記録を基に、AIが栄養バランスとアドバイスを提供します
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
+                    🔍 AI診断を実行
+                    <span id="aiDiagnosisLoading" style="display: none;" class="loading-spinner"></span>
+                </button>
+                <button onclick="showPromptEditorModal()" class="btn btn-secondary">
+                    ✏️ プロンプト編集
+                </button>
+                <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
+                    🔗 接続テスト
+                </button>
+            </div>
+            <div id="cohereTestStatus" style="margin-top: 10px; font-size: 0.9em; color: #6b7280;"></div>
+        </div>
+    `;
 
-        if (!response.ok) {
-            throw new Error(`APIエラー: ${response.status} \nレスポンス: ${await response.text()}`);
+    // currentUserDisplayの直後に挿入
+    currentUserDisplay.insertAdjacentElement('afterend', aiDiagnosisSection);
+
+    // AI診断結果表示エリアも記録一覧の前に追加
+    const mainContent = document.getElementById('mainContent');
+    if (mainContent) {
+        const resultArea = document.createElement('div');
+        resultArea.id = 'aiDiagnosisResult';
+        resultArea.style.marginTop = '20px';
+        
+        // form-sectionの前に挿入
+        const formSection = mainContent.querySelector('.form-section');
+        if (formSection) {
+            mainContent.insertBefore(resultArea, formSection);
         }
-
-        const data = await response.json();
-        if (!data.success) {
-            throw new Error(data.error || 'AI診断に失敗しました');
-        }
-
-        return {
-            diagnosisJa: data.diagnosis_ja,
-            diagnosisEn: data.diagnosis_en
-        };
-    } catch (error) {
-        console.error(' バックエンドAPI呼び出しエラー:', error);
-        throw new Error(`AI診断サービスへの接続に失敗しました: ${error.message}`);
     }
 }
 
