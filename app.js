@@ -770,66 +770,50 @@ function displayMealRecords(records) {
         return;
     }
 
-    const recordsHTML = records.map(record => createRecordElement(record)).join('');
-    recordsContainer.innerHTML = recordsHTML;
+    recordsContainer.innerHTML = records.map(record => createRecordElement(record)).join('');
 }
 
+// 記録要素の作成
 function createRecordElement(record) {
     console.log('記録要素を作成:', record);
-    const recordDiv = document.createElement('div');
-    recordDiv.className = 'record-item';
+    const datetime = new Date(record.datetime);
+    const formattedDate = datetime.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    const formattedTime = datetime.toLocaleTimeString('ja-JP', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
-    try {
-        // 日付と時間
-        const dateDiv = document.createElement('div');
-        dateDiv.className = 'record-date';
-        const date = new Date(record.datetime);
-        dateDiv.textContent = `${date.toLocaleDateString('ja-JP')} ${date.toLocaleTimeString('ja-JP')}`;
-        
-        // 食事名
-        const foodDiv = document.createElement('div');
-        foodDiv.className = 'record-food';
-        foodDiv.textContent = `${record.meal_type} - ${record.food_name}`;
-        
-        // カロリー
-        const caloriesDiv = document.createElement('div');
-        caloriesDiv.className = 'record-calories';
-        caloriesDiv.textContent = record.calories ? `${record.calories} kcal` : '-';
-        
-        // 場所
-        const locationDiv = document.createElement('div');
-        locationDiv.className = 'record-location';
-        locationDiv.textContent = record.location || '-';
-        
-        // アクション
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'record-actions';
-        
-        const editButton = document.createElement('button');
-        editButton.className = 'btn btn-secondary btn-small';
-        editButton.textContent = '編集';
-        editButton.onclick = () => editRecord(record.id);
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'btn btn-danger btn-small';
-        deleteButton.textContent = '削除';
-        deleteButton.onclick = () => deleteRecord(record.id);
-        
-        actionsDiv.appendChild(editButton);
-        actionsDiv.appendChild(deleteButton);
-        
-        recordDiv.appendChild(dateDiv);
-        recordDiv.appendChild(foodDiv);
-        recordDiv.appendChild(caloriesDiv);
-        recordDiv.appendChild(locationDiv);
-        recordDiv.appendChild(actionsDiv);
-        
-    } catch (error) {
-        console.error('記録要素作成エラー:', error);
-        recordDiv.textContent = 'エラー: 記録の表示に失敗しました';
-    }
-    
-    return recordDiv;
+    return `
+        <div class="record-item" data-id="${record.id}">
+            <div class="record-header">
+                <div class="record-datetime">
+                    <span class="record-date">${formattedDate}</span>
+                    <span class="record-time">${formattedTime}</span>
+                </div>
+                <div class="record-type">${record.meal_type}</div>
+            </div>
+            <div class="record-content">
+                <div class="record-food">
+                    <strong>${record.food_name}</strong>
+                    ${record.calories ? `<span class="record-calories">${record.calories}kcal</span>` : ''}
+                </div>
+                ${record.location ? `<div class="record-location">📍 ${record.location}</div>` : ''}
+                ${record.notes ? `<div class="record-notes">📝 ${record.notes}</div>` : ''}
+            </div>
+            <div class="record-actions">
+                <button onclick="editRecord(${record.id})" class="edit-button">
+                    ✏️ 編集
+                </button>
+                <button onclick="deleteRecord(${record.id})" class="delete-button">
+                    🗑️ 削除
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 // 全ユーザーデータのダウンロード

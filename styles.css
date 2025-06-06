@@ -247,47 +247,109 @@ textarea {
     font-size: 1.3em;
 }
 
+.records-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 20px;
+}
+
 .record-item {
-    background: #ffffff;
-    border: 1px solid #eaeaea;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 15px;
-    display: grid;
-    grid-template-columns: 0.8fr 1fr 0.8fr 0.8fr 0.5fr;
-    gap: 20px;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.record-header {
+    display: flex;
+    justify-content: space-between;
     align-items: center;
-    transition: all 0.2s ease;
+    margin-bottom: 12px;
 }
 
-.record-item:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    transform: translateY(-2px);
+.record-datetime {
+    display: flex;
+    gap: 8px;
+    color: #6b7280;
+    font-size: 0.9em;
 }
 
-.record-date {
-    font-weight: 600;
-    color: #1a1a1a;
+.record-type {
+    background-color: #e5e7eb;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #374151;
+}
+
+.record-content {
+    margin-bottom: 12px;
 }
 
 .record-food {
-    color: #2563eb;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.record-food strong {
+    color: #111827;
+    font-size: 1.1em;
 }
 
 .record-calories {
-    color: #64748b;
+    color: #059669;
+    font-size: 0.9em;
+    background-color: #ecfdf5;
+    padding: 2px 8px;
+    border-radius: 4px;
 }
 
-.record-location {
-    color: #64748b;
-    font-style: italic;
+.record-location, .record-notes {
+    color: #6b7280;
+    font-size: 0.9em;
+    margin-top: 4px;
 }
 
 .record-actions {
     display: flex;
-    gap: 10px;
-    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.edit-button, .delete-button {
+    padding: 6px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    background-color: white;
+    color: #374151;
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.edit-button:hover {
+    background-color: #f3f4f6;
+}
+
+.delete-button:hover {
+    background-color: #fee2e2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.no-records {
+    text-align: center;
+    color: #6b7280;
+    padding: 32px;
+    background-color: #f9fafb;
+    border-radius: 8px;
+    border: 2px dashed #e5e7eb;
 }
 
 .empty-state {
@@ -528,10 +590,6 @@ textarea {
 
 .ai-advice-container {
     margin: 20px 0;
-}
-
-.records-container {
-    margin-top: 20px;
 }
 
 .loading-spinner {
