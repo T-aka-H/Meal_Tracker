@@ -1,6 +1,10 @@
 // 食事記録アプリ - 完全版（COHERE AI診断機能付き + プロンプト編集機能）
 console.log('app.js読み込み開始');
 
+// Supabase設定
+const SUPABASE_URL = 'https://nhnanyzkcxlysugllpde.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI0NTk5NzAsImV4cCI6MjAxODAzNTk3MH0.H0HPGJ-YFGFpuGzpTtQj-kHQUTXnxqTZhHGvhJfSQnE';
+
 // グローバル変数
 let supabase = null;
 let currentUser = null;
@@ -8,10 +12,6 @@ let currentUserId = null;
 let editingId = null;
 let allUsers = [];
 let customPromptTemplate = null; // カスタムプロンプト保存用
-
-// Supabase設定（動作確認済み）
-const supabaseUrl = 'https://nhnanyzkcxlysugllpde.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwMTA5NzMsImV4cCI6MjA2NDU4Njk3M30.Ccc7gETnFohBMROiMF8VDiAqPicrkI_ZEaNDQITwj30';
 
 // COHERE AI食事診断機能（バックエンドAPI経由）
 
@@ -27,7 +27,7 @@ async function getAIFoodDiagnosis() {
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
         const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
+            `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
             {
                 method: 'GET',
                 headers: {
@@ -593,7 +593,12 @@ async function initializeSupabase() {
     console.log('🔄 Supabase接続開始...');
     try {
         // Supabaseクライアントの作成
-        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        if (typeof supabaseClient === 'undefined') {
+            console.log('supabaseClientをロード中...');
+            await loadSupabaseClient();
+        }
+        
+        supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabaseクライアント作成成功');
 
         // 接続テスト
@@ -615,10 +620,32 @@ async function initializeSupabase() {
     }
 }
 
+// Supabaseクライアントライブラリの動的ロード
+async function loadSupabaseClient() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+        script.onload = () => {
+            console.log('Supabaseクライアントライブラリのロード完了');
+            window.supabaseClient = supabase;
+            resolve();
+        };
+        script.onerror = () => {
+            console.error('Supabaseクライアントライブラリのロード失敗');
+            reject(new Error('Supabaseクライアントライブラリのロードに失敗しました'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
 // ユーザー一覧の読み込み
 async function loadUsers() {
     console.log('ユーザー読み込み開始');
     try {
+        if (!supabase) {
+            throw new Error('Supabaseクライアントが初期化されていません');
+        }
+
         const { data: users, error } = await supabase
             .from('users')
             .select('*')
@@ -680,7 +707,7 @@ async function switchUser(userId) {
 
     try {
         const response = await fetch(
-            `${supabaseUrl}/rest/v1/users?id=eq.${userId}`,
+            `${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`,
             {
                 method: 'GET',
                 headers: {
@@ -773,7 +800,7 @@ async function addUser() {
     try {
         console.log('ユーザー追加開始:', name);
         
-        const response = await fetch(`${supabaseUrl}/rest/v1/users`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -815,7 +842,7 @@ async function deleteUser() {
 
     try {
         // まず、ユーザーの全ての記録を削除
-        const recordsResponse = await fetch(`${supabaseUrl}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+        const recordsResponse = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
             method: 'DELETE',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -829,7 +856,7 @@ async function deleteUser() {
         }
 
         // 次に、ユーザーを削除
-        const userResponse = await fetch(`${supabaseUrl}/rest/v1/users?id=eq.${currentUserId}`, {
+        const userResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${currentUserId}`, {
             method: 'DELETE',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -877,7 +904,7 @@ function deleteRecord(id) {
     if (confirmBtn) {
         confirmBtn.onclick = async () => {
             try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${id}`, {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${id}`, {
                     method: 'DELETE',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -922,7 +949,7 @@ function clearUserData() {
     if (confirmBtn) {
         confirmBtn.onclick = async () => {
             try {
-                const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
                     method: 'DELETE',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -958,7 +985,7 @@ async function downloadUserData() {
     
     try {
         const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
+            `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
             {
                 method: 'GET',
                 headers: {
@@ -1128,7 +1155,7 @@ async function addMealRecord() {
             user_id: currentUserId
         };
         
-        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1168,7 +1195,7 @@ async function loadMealRecords() {
     if (!currentUserId) return;
     
     try {
-        const url = `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`;
+        const url = `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`;
         console.log('APIリクエストURL:', url);
 
         const response = await fetch(url, {
@@ -1262,7 +1289,7 @@ function createRecordElement(record) {
 // 記録の編集
 async function editRecord(id) {
     try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?select=*&id=eq.${id}`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -1312,7 +1339,7 @@ async function updateMealRecord() {
     if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
     
     try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/meal_records?id=eq.${editingId}`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${editingId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -1467,7 +1494,7 @@ async function getAIAdvice() {
     try {
         // 最新の食事記録を取得
         const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
+            `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
             {
                 method: 'GET',
                 headers: {
