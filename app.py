@@ -23,8 +23,7 @@ def create_app():
     CORS(app, resources={
         r"/*": {
             "origins": [
-                "https://meal-tracker-2-jyq6.onrender.com",
-                "https://meal-tracker-1-y2dy.onrender.com",
+                "https://meal-tracker-1-y2dy.onrender.com",  # フロントエンド
                 "http://localhost:5000",
                 "http://127.0.0.1:5000"
             ],
