@@ -41,9 +41,21 @@ def create_app():
 
 回答は親しみやすく、実践的なアドバイスを含めてください。専門用語は分かりやすく説明してください。"""
 
+    # ルートハンドラー
+    @app.route('/')
+    def index():
+        """メインページを提供"""
+        return send_from_directory('.', 'index.html')
+
+    @app.route('/<path:filename>')
+    def serve_static(filename):
+        """静的ファイルを提供"""
+        return send_from_directory('.', filename)
+
     # CORSプリフライトリクエストの処理
     @app.before_request
     def handle_preflight():
+        """プリフライトリクエストを処理"""
         if request.method == "OPTIONS":
             response = Response()
             response.headers['Access-Control-Allow-Origin'] = '*'
@@ -53,23 +65,16 @@ def create_app():
 
     @app.after_request
     def after_request(response):
+        """レスポンスヘッダーにCORS設定を追加"""
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, apikey, prefer'
         return response
 
-    # 静的ファイルの提供
-    @app.route('/')
-    def serve_static():
-        return send_from_directory('.', 'index.html')
-
-    @app.route('/<path:path>')
-    def serve_file(path):
-        return send_from_directory('.', path)
-
     # Supabaseプロキシ
     @app.route('/rest/v1/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
     def proxy(path):
+        """Supabaseへのリクエストをプロキシ"""
         try:
             target_url = f"{app.config['SUPABASE_URL']}/rest/v1/{path}"
             if request.query_string:
@@ -192,18 +197,45 @@ def create_app():
             logger.exception('詳細なエラー情報:')
             return jsonify({'error': f'内部エラー: {str(e)}'}), 500
 
+    # ヘルスチェックエンドポイント
+    @app.route('/api/health')
+    def health_check():
+        """アプリケーションの状態を確認"""
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'cohere_api': bool(app.config['COHERE_API_KEY']),
+            'supabase': bool(app.config['SUPABASE_ANON_KEY'] and app.config['SUPABASE_URL'])
+        })
+
     # エラーハンドラー
     @app.errorhandler(404)
     def not_found_error(error):
-        return jsonify({'error': 'Not Found', 'message': 'The requested resource was not found'}), 404
-
-    @app.errorhandler(500)
-    def internal_error(error):
-        return jsonify({'error': 'Internal Server Error', 'message': str(error)}), 500
+        """404エラーハンドラー"""
+        return jsonify({
+            'error': 'Not Found',
+            'message': 'The requested resource was not found',
+            'path': request.path
+        }), 404
 
     @app.errorhandler(405)
     def method_not_allowed(error):
-        return jsonify({'error': 'Method Not Allowed', 'message': 'The method is not allowed for the requested URL'}), 405
+        """405エラーハンドラー"""
+        return jsonify({
+            'error': 'Method Not Allowed',
+            'message': 'The method is not allowed for the requested URL',
+            'method': request.method,
+            'path': request.path
+        }), 405
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        """500エラーハンドラー"""
+        logger.exception('Internal Server Error:')
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': str(error)
+        }), 500
 
     return app
 
