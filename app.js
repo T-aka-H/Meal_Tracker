@@ -3,7 +3,7 @@ console.log('app.js読み込み開始');
 
 // Supabase設定
 const SUPABASE_URL = 'https://nhnanyzkcxlysugllpde.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI0NTk5NzAsImV4cCI6MjAxODAzNTk3MH0.H0HPGJ-YFGFpuGzpTtQj-kHQUTXnxqTZhHGvhJfSQnE';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwMTA5NzMsImV4cCI6MjA2NDU4Njk3M30.Ccc7gETnFohBMROiMF8VDiAqPicrkI_ZEaNDQITwj30';
 
 // グローバル変数
 let supabaseClient = null; // 変数名を変更
