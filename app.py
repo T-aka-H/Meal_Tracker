@@ -8,7 +8,10 @@ from datetime import datetime
 import json
 
 # ログ設定
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 # 環境変数の読み込み
@@ -111,26 +114,34 @@ def proxy(path):
 @app.route('/api/ai-diagnosis', methods=['POST'])
 def ai_diagnosis():
     """COHERE AIを使用した食事診断API"""
+    logger.debug('AI診断エンドポイントにリクエストを受信')
+    
     if not COHERE_API_KEY:
         logger.error('COHERE_API_KEY が設定されていません')
         return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
     
     try:
         data = request.get_json()
+        logger.debug(f'受信したリクエストデータ: {data}')
+        
         if not data:
+            logger.error('リクエストボディが空です')
             return jsonify({'error': 'リクエストボディが空です'}), 400
         
         meal_records = data.get('meal_records', [])
         custom_prompt = data.get('custom_prompt', DEFAULT_PROMPT_TEMPLATE)
         
         if not meal_records:
+            logger.error('食事記録が提供されていません')
             return jsonify({'error': '食事記録が提供されていません'}), 400
         
         logger.info(f'食事記録数: {len(meal_records)}')
         meal_summary = format_meal_records_for_ai(meal_records)
         prompt = custom_prompt.format(meal_summary=meal_summary)
         
+        logger.debug(f'生成されたプロンプト: {prompt}')
         logger.info('COHERE APIにリクエスト送信')
+        
         cohere_response = requests.post(
             'https://api.cohere.ai/v1/generate',
             headers={
@@ -149,6 +160,9 @@ def ai_diagnosis():
             timeout=30
         )
         
+        logger.debug(f'COHERE APIレスポンス: {cohere_response.status_code}')
+        logger.debug(f'COHERE APIレスポンス内容: {cohere_response.text[:200]}...')
+        
         if cohere_response.status_code != 200:
             error_msg = f"COHERE API エラー: {cohere_response.status_code}"
             logger.error(f"{error_msg}: {cohere_response.text}")
@@ -158,6 +172,8 @@ def ai_diagnosis():
         diagnosis = cohere_data['generations'][0]['text'].strip()
         
         logger.info('AI診断完了')
+        logger.debug(f'診断結果: {diagnosis[:200]}...')
+        
         return jsonify({
             'success': True,
             'diagnosis': diagnosis,
@@ -172,6 +188,7 @@ def ai_diagnosis():
         return jsonify({'error': 'AI診断サービスへの接続に失敗しました。'}), 503
     except Exception as e:
         logger.error(f'AI診断エラー: {str(e)}')
+        logger.exception('詳細なエラー情報:')
         return jsonify({'error': f'内部エラー: {str(e)}'}), 500
 
 def format_meal_records_for_ai(records):
