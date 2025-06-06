@@ -1,17 +1,36 @@
 import multiprocessing
 import os
 
-# ワーカープロセス数（開発環境では1つで十分）
-workers = 1
+# Server socket
+bind = "0.0.0.0:10000"
+backlog = 2048
 
-# ワーカークラス
+# Worker processes
+workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = 'sync'
+worker_connections = 1000
+timeout = 30
+keepalive = 2
 
-# バインドするアドレス
-bind = f"0.0.0.0:{os.environ.get('PORT', '5000')}"
+# Logging
+accesslog = '-'
+errorlog = '-'
+loglevel = 'info'
 
-# タイムアウト設定（COHEREのAPIコールに十分な時間を確保）
-timeout = 300
+# Process naming
+proc_name = 'meal-tracker-api'
+
+# Server mechanics
+daemon = False
+pidfile = None
+umask = 0
+user = None
+group = None
+tmp_upload_dir = None
+
+# SSL
+keyfile = None
+certfile = None
 
 # アクセスログの設定
 accesslog = '-'
@@ -33,6 +52,16 @@ graceful_timeout = 120
 keep_alive = 5
 
 # バッファサイズ設定
+limit_request_line = 8190
+limit_request_fields = 100
+limit_request_field_size = 8190
+
+# その他の設定
+worker_tmp_dir = '/dev/shm'  # メモリ内一時ディレクトリを使用
+forwarded_allow_ips = '*'    # プロキシからのリクエストを許可
+proxy_allow_ips = '*'        # プロキシからのリクエストを許可
+
+# セキュリティ設定
 limit_request_line = 8190
 limit_request_fields = 100
 limit_request_field_size = 8190 

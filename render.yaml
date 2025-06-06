@@ -3,7 +3,7 @@ services:
     name: meal-tracker
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m gunicorn wsgi:app --bind 0.0.0.0:$PORT --log-level debug
+    startCommand: python -m gunicorn wsgi:app --bind 0.0.0.0:$PORT --log-level debug --timeout 300 --workers 1
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -11,6 +11,8 @@ services:
         value: 10000
       - key: FLASK_DEBUG
         value: false
+      - key: FLASK_ENV
+        value: production
       - key: COHERE_API_KEY
         sync: false
       - key: SUPABASE_ANON_KEY
