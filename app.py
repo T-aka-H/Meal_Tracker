@@ -41,7 +41,6 @@ def create_app():
 
 回答は親しみやすく、実践的なアドバイスを含めてください。専門用語は分かりやすく説明してください。"""
 
-    # ルートハンドラー
     @app.route('/')
     def index():
         """メインページを提供"""
@@ -52,107 +51,66 @@ def create_app():
         """静的ファイルを提供"""
         return send_from_directory('.', filename)
 
-    # CORSプリフライトリクエストの処理
-    @app.before_request
-    def handle_preflight():
-        """プリフライトリクエストを処理"""
-        if request.method == "OPTIONS":
-            response = Response()
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, apikey, prefer'
-            return response
+    @app.route('/api/health')
+    def health_check():
+        """ヘルスチェックエンドポイント"""
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': datetime.now().isoformat(),
+            'environment': {
+                'COHERE_API_KEY': bool(app.config['COHERE_API_KEY']),
+                'SUPABASE_ANON_KEY': bool(app.config['SUPABASE_ANON_KEY']),
+                'SUPABASE_URL': bool(app.config['SUPABASE_URL'])
+            }
+        })
 
-    @app.after_request
-    def after_request(response):
-        """レスポンスヘッダーにCORS設定を追加"""
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, apikey, prefer'
-        return response
-
-    # Supabaseプロキシ
-    @app.route('/rest/v1/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
-    def proxy(path):
-        """Supabaseへのリクエストをプロキシ"""
-        try:
-            target_url = f"{app.config['SUPABASE_URL']}/rest/v1/{path}"
-            if request.query_string:
-                target_url += f"?{request.query_string.decode()}"
-            
-            logger.info(f"Proxying {request.method} request to: {target_url}")
-            
-            headers = {}
-            api_key = request.args.get('apikey') or request.headers.get('apikey') or app.config['SUPABASE_ANON_KEY']
-            if api_key:
-                headers['apikey'] = api_key
-                headers['Authorization'] = f'Bearer {api_key}'
-            
-            for header_name in ['content-type', 'prefer']:
-                if header_name in request.headers:
-                    headers[header_name] = request.headers[header_name]
-            
-            response = requests.request(
-                method=request.method,
-                url=target_url,
-                headers=headers,
-                data=request.get_data(),
-                timeout=30,
-                verify=False
-            )
-            
-            logger.info(f"Proxy response status: {response.status_code}")
-            
-            excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
-            headers = [(name, value) for (name, value) in response.raw.headers.items()
-                      if name.lower() not in excluded_headers]
-            
-            return Response(response.content, response.status_code, headers)
-            
-        except requests.RequestException as e:
-            logger.error(f"Proxy Request Error: {e}")
-            return jsonify({'error': f'Request failed: {str(e)}'}), 502
-        except Exception as e:
-            logger.error(f"Proxy Error: {e}")
-            return jsonify({'error': f'Internal server error: {str(e)}'}), 500
-
-    # AI診断エンドポイント
-    @app.route('/api/ai-diagnosis', methods=['POST'])
+    @app.route('/api/ai-diagnosis', methods=['POST', 'OPTIONS'])
     def ai_diagnosis():
         """COHERE AIを使用した食事診断API"""
         logger.debug('AI診断エンドポイントにリクエストを受信')
-        
+        logger.debug(f'リクエストメソッド: {request.method}')
+        logger.debug(f'リクエストヘッダー: {dict(request.headers)}')
+
+        # OPTIONSリクエストの処理
+        if request.method == 'OPTIONS':
+            response = Response()
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+
         if not app.config['COHERE_API_KEY']:
             logger.error('COHERE_API_KEY が設定されていません')
             return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
-        
+
         try:
             data = request.get_json()
             logger.debug(f'受信したリクエストデータ: {data}')
-            
+
             if not data:
                 logger.error('リクエストボディが空です')
                 return jsonify({'error': 'リクエストボディが空です'}), 400
-            
+
             meal_records = data.get('meal_records', [])
             custom_prompt = data.get('custom_prompt', app.config['DEFAULT_PROMPT_TEMPLATE'])
-            
+
             if not meal_records:
                 logger.error('食事記録が提供されていません')
                 return jsonify({'error': '食事記録が提供されていません'}), 400
-            
+
             logger.info(f'食事記録数: {len(meal_records)}')
             meal_summary = format_meal_records_for_ai(meal_records)
             prompt = custom_prompt.format(meal_summary=meal_summary)
-            
+
             logger.debug(f'生成されたプロンプト: {prompt}')
             logger.info('COHERE APIにリクエスト送信')
-            
+
             cohere_response = requests.post(
                 'https://api.cohere.ai/v1/generate',
                 headers={
                     'Authorization': f'Bearer {app.config["COHERE_API_KEY"]}',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 json={
                     'model': 'command',
@@ -165,27 +123,29 @@ def create_app():
                 },
                 timeout=30
             )
-            
+
             logger.debug(f'COHERE APIレスポンス: {cohere_response.status_code}')
             logger.debug(f'COHERE APIレスポンス内容: {cohere_response.text[:200]}...')
-            
+
             if cohere_response.status_code != 200:
                 error_msg = f"COHERE API エラー: {cohere_response.status_code}"
                 logger.error(f"{error_msg}: {cohere_response.text}")
                 return jsonify({'error': error_msg}), 500
-            
+
             cohere_data = cohere_response.json()
             diagnosis = cohere_data['generations'][0]['text'].strip()
-            
+
             logger.info('AI診断完了')
             logger.debug(f'診断結果: {diagnosis[:200]}...')
-            
-            return jsonify({
+
+            response = jsonify({
                 'success': True,
                 'diagnosis': diagnosis,
                 'meal_count': len(meal_records)
             })
-            
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            return response
+
         except requests.exceptions.Timeout:
             logger.error('COHERE API タイムアウト')
             return jsonify({'error': 'AI診断がタイムアウトしました。しばらく時間をおいて再度お試しください。'}), 504
@@ -196,46 +156,6 @@ def create_app():
             logger.error(f'AI診断エラー: {str(e)}')
             logger.exception('詳細なエラー情報:')
             return jsonify({'error': f'内部エラー: {str(e)}'}), 500
-
-    # ヘルスチェックエンドポイント
-    @app.route('/api/health')
-    def health_check():
-        """アプリケーションの状態を確認"""
-        return jsonify({
-            'status': 'healthy',
-            'timestamp': datetime.now().isoformat(),
-            'cohere_api': bool(app.config['COHERE_API_KEY']),
-            'supabase': bool(app.config['SUPABASE_ANON_KEY'] and app.config['SUPABASE_URL'])
-        })
-
-    # エラーハンドラー
-    @app.errorhandler(404)
-    def not_found_error(error):
-        """404エラーハンドラー"""
-        return jsonify({
-            'error': 'Not Found',
-            'message': 'The requested resource was not found',
-            'path': request.path
-        }), 404
-
-    @app.errorhandler(405)
-    def method_not_allowed(error):
-        """405エラーハンドラー"""
-        return jsonify({
-            'error': 'Method Not Allowed',
-            'message': 'The method is not allowed for the requested URL',
-            'method': request.method,
-            'path': request.path
-        }), 405
-
-    @app.errorhandler(500)
-    def internal_error(error):
-        """500エラーハンドラー"""
-        logger.exception('Internal Server Error:')
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': str(error)
-        }), 500
 
     return app
 
@@ -256,30 +176,23 @@ def format_meal_records_for_ai(records):
         else:
             date_str = "日付不明"
             time_str = "時間不明"
-        
+
         calories = record.get('calories')
         calories_str = f"{calories}kcal" if calories else "不明"
-        
+
         formatted_record = f"""日付: {date_str} {time_str}
 食事の種類: {record.get('meal_type', '不明')}
 食べ物: {record.get('food_name', '不明')}
 カロリー: {calories_str}
 場所: {record.get('location', '記録なし')}
 備考: {record.get('notes', 'なし')}"""
-        
+
         formatted_records.append(formatted_record)
-    
+
     return '\n\n'.join(formatted_records)
 
 app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    
-    logger.info(f'Flask アプリケーション開始: ポート{port}, デバッグ{debug}')
-    logger.info(f'COHERE API設定: {"有効" if app.config["COHERE_API_KEY"] else "無効"}')
-    logger.info(f'Supabase設定: {"有効" if app.config["SUPABASE_ANON_KEY"] and app.config["SUPABASE_URL"] else "無効"}')
-    logger.info(f'プロキシ機能: 有効 ({app.config["SUPABASE_URL"]})')
-    
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    app.run(host='0.0.0.0', port=port)
