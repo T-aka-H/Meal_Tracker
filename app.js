@@ -617,31 +617,58 @@ async function refreshUsers() {
 
 // ユーザーの切り替え
 async function switchUser() {
-    const userId = document.getElementById('userSelect').value;
-    if (!userId) {
-        currentUser = null;
-        currentUserId = null;
-        document.getElementById('mainContent').style.display = 'none';
-        document.getElementById('currentUserDisplay').style.display = 'none';
-        
-        // 統計情報を削除
-        setTimeout(forceRemoveStats, 100);
+    const userSelect = document.getElementById('userSelect');
+    const selectedUserId = userSelect.value;
+    console.log('ユーザー切り替え:', selectedUserId);
+
+    if (!selectedUserId) {
+        showNotification('ユーザーを選択してください', 'error');
         return;
     }
-    
-    currentUserId = parseInt(userId);
-    currentUser = allUsers.find(u => u.id === currentUserId);
-    
-    if (currentUser) {
-        document.getElementById('mainContent').style.display = 'block';
-        document.getElementById('currentUserDisplay').style.display = 'block';
-        document.getElementById('currentUserName').textContent = currentUser.name;
+
+    try {
+        const response = await fetch(
+            `${supabaseUrl}/rest/v1/users?id=eq.${selectedUserId}`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': getSupabaseKey(),
+                    'Authorization': `Bearer ${getSupabaseKey()}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('ユーザー情報の取得に失敗しました');
+        }
+
+        const users = await response.json();
+        if (users.length === 0) {
+            throw new Error('ユーザーが見つかりません');
+        }
+
+        currentUser = users[0];
+        currentUserId = currentUser.id;
         
-        localStorage.setItem('lastUserId', currentUserId);
+        // ユーザー表示を更新
+        const userDisplay = document.getElementById('currentUserName');
+        if (userDisplay) {
+            userDisplay.textContent = currentUser.name;
+        }
+        document.getElementById('currentUserDisplay').style.display = 'block';
+        document.getElementById('mainContent').style.display = 'block';
+
+        console.log('ユーザー切り替え完了:', currentUser);
+        
+        // 食事記録を読み込む
         await loadMealRecords();
         
-        // 統計情報を削除
-        setTimeout(forceRemoveStats, 100);
+        showNotification(`${currentUser.name}さんに切り替えました`, 'success');
+        
+    } catch (error) {
+        console.error('ユーザー切り替えエラー:', error);
+        showNotification(error.message, 'error');
     }
 }
 
@@ -762,15 +789,29 @@ async function addMealRecord() {
 
 // 食事記録の表示
 function displayMealRecords(records) {
-    const recordsContainer = document.querySelector('.records-container');
-    if (!recordsContainer) return;
+    console.log('displayMealRecords開始:', records);
+    const recordsContainer = document.getElementById('recordsList');
+    console.log('recordsContainer:', recordsContainer);
+    
+    if (!recordsContainer) {
+        console.error('recordsContainerが見つかりません');
+        return;
+    }
 
     if (!records || records.length === 0) {
+        console.log('記録なし - 空のメッセージを表示');
         recordsContainer.innerHTML = '<p class="no-records">記録がありません</p>';
         return;
     }
 
-    recordsContainer.innerHTML = records.map(record => createRecordElement(record)).join('');
+    const recordsHTML = records.map(record => {
+        const element = createRecordElement(record);
+        console.log('作成された記録要素:', element);
+        return element;
+    }).join('');
+    
+    console.log('最終的なHTML:', recordsHTML);
+    recordsContainer.innerHTML = recordsHTML;
 }
 
 // 記録要素の作成
@@ -1014,31 +1055,34 @@ function getMealFormData() {
 
 // 食事記録の読み込み（Supabase API直接アクセス）
 async function loadMealRecords() {
+    console.log('loadMealRecords開始: currentUserId =', currentUserId);
     if (!currentUserId) return;
     
     try {
-        const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': getSupabaseKey(),
-                    'Authorization': `Bearer ${getSupabaseKey()}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
+        const url = `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`;
+        console.log('APIリクエストURL:', url);
 
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'apikey': getSupabaseKey(),
+                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'Accept': 'application/json'
+            }
+        });
+
+        console.log('APIレスポンスステータス:', response.status);
+        
         if (!response.ok) {
             const errorText = await response.text();
+            console.error('APIエラーレスポンス:', errorText);
             throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
 
         const records = await response.json();
-        displayMealRecords(records);
+        console.log('取得した記録:', records);
         
-        // 統計情報を削除
-        setTimeout(forceRemoveStats, 100);
+        displayMealRecords(records);
         
     } catch (error) {
         console.error('記録読み込みエラー:', error);
