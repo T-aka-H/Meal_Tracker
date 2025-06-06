@@ -22,7 +22,35 @@ async function getAIFoodDiagnosis() {
         document.getElementById('diagnosisJa').textContent = '診断中...';
         document.getElementById('diagnosisEn').textContent = 'Analyzing...';
 
-        const mealRecords = await loadMealRecords();
+        // 最新の食事記録を取得（過去1週間）
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        const response = await fetch(
+            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('食事記録の取得に失敗しました');
+        }
+
+        const mealRecords = await response.json();
+
+        if (!mealRecords || mealRecords.length === 0) {
+            document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
+            document.getElementById('diagnosisEn').textContent = 'No meal records found. Please record some meals before requesting a diagnosis.';
+            return;
+        }
+
+        // AI診断を取得
         const diagnosis = await getAIDiagnosisFromBackend(mealRecords);
 
         // 診断結果の表示
@@ -38,6 +66,8 @@ async function getAIFoodDiagnosis() {
 // バックエンドAPIを使用して食事診断を取得
 async function getAIDiagnosisFromBackend(mealRecords) {
     try {
+        console.log('AI診断リクエスト:', { meal_records: mealRecords });  // デバッグ用
+
         const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
             method: 'POST',
             headers: {
