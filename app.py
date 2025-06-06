@@ -1,8 +1,11 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, jsonify, send_from_directory
 import requests
 import os
 from dotenv import load_dotenv
 import logging
+from flask_cors import CORS
+from datetime import datetime
+import json
 
 # ログ設定
 logging.basicConfig(level=logging.INFO)
@@ -12,6 +15,27 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = Flask(__name__)
+CORS(app)  # CORS設定でフロントエンドからのアクセスを許可
+
+# 環境変数から設定を取得
+COHERE_API_KEY = os.environ.get('COHERE_API_KEY')
+SUPABASE_ANON_KEY = os.environ.get('SUPABASE_ANON_KEY') 
+SUPABASE_URL = os.environ.get('SUPABASE_URL', 'https://nhnanyzkcxlysugllpde.supabase.co')
+
+# デフォルトプロンプトテンプレート
+DEFAULT_PROMPT_TEMPLATE = """以下は過去1週間の食事記録です。この記録を基に、栄養バランス、食事パターン、健康面でのアドバイスを日本語で提供してください。
+
+食事記録:
+{meal_summary}
+
+以下の観点から分析してください：
+1. 栄養バランス（炭水化物、タンパク質、ビタミン、ミネラル）
+2. 食事のタイミングと頻度
+3. カロリー摂取量の適切性
+4. 改善すべき点
+5. 具体的な推奨事項
+
+回答は親しみやすく、実践的なアドバイスを含めてください。専門用語は分かりやすく説明してください。"""
 
 @app.before_request
 def handle_preflight():
@@ -116,32 +140,17 @@ def serve_css():
 @app.route('/api/ai-diagnosis', methods=['POST'])
 def ai_diagnosis():
     """COHERE AIを使用した食事診断API"""
-    
     if not COHERE_API_KEY:
         logger.error('COHERE_API_KEY が設定されていません')
         return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
-    
     try:
-        # フロントエンドからのデータを取得
         data = request.get_json()
         meal_records = data.get('meal_records', [])
         custom_prompt = data.get('custom_prompt', DEFAULT_PROMPT_TEMPLATE)
-        
         if not meal_records:
             return jsonify({'error': '食事記録が提供されていません'}), 400
-        
-        logger.info(f'食事記録数: {len(meal_records)}')
-        logger.info(f'カスタムプロンプト使用: {custom_prompt != DEFAULT_PROMPT_TEMPLATE}')
-        
-        # 食事記録を整形
         meal_summary = format_meal_records_for_ai(meal_records)
-        
-        # プロンプト作成（カスタムプロンプトまたはデフォルト）
         prompt = custom_prompt.format(meal_summary=meal_summary)
-        
-        logger.info(f'生成されたプロンプト長: {len(prompt)}文字')
-        
-        # COHERE APIに診断を依頼
         cohere_response = requests.post(
             'https://api.cohere.ai/v1/generate',
             headers={
@@ -159,26 +168,17 @@ def ai_diagnosis():
             },
             timeout=30
         )
-        
-        logger.info(f'COHERE APIレスポンス: {cohere_response.status_code}')
-        
         if cohere_response.status_code != 200:
             error_msg = f"COHERE API エラー: {cohere_response.status_code}"
             logger.error(f"{error_msg}: {cohere_response.text}")
             return jsonify({'error': error_msg}), 500
-        
         cohere_data = cohere_response.json()
         diagnosis = cohere_data['generations'][0]['text'].strip()
-        
-        logger.info(f'診断結果長: {len(diagnosis)}文字')
-        
         return jsonify({
             'success': True,
             'diagnosis': diagnosis,
-            'meal_count': len(meal_records),
-            'prompt_used': custom_prompt != DEFAULT_PROMPT_TEMPLATE
+            'meal_count': len(meal_records)
         })
-        
     except requests.exceptions.Timeout:
         logger.error('COHERE API タイムアウト')
         return jsonify({'error': 'AI診断がタイムアウトしました。しばらく時間をおいて再度お試しください。'}), 504
@@ -227,12 +227,10 @@ def save_prompt_template():
 def format_meal_records_for_ai(records):
     """食事記録をAI用にフォーマット"""
     formatted_records = []
-    
     for record in records:
         datetime_str = record.get('datetime', '')
         if datetime_str:
             try:
-                # ISO形式の日時をパース
                 dt = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
                 date_str = dt.strftime('%Y年%m月%d日')
                 time_str = dt.strftime('%H:%M')
@@ -243,20 +241,15 @@ def format_meal_records_for_ai(records):
         else:
             date_str = "日付不明"
             time_str = "時間不明"
-        
-        # カロリーの処理
         calories = record.get('calories')
         calories_str = f"{calories}kcal" if calories else "不明"
-        
         formatted_record = f"""日付: {date_str} {time_str}
 食事の種類: {record.get('meal_type', '不明')}
 食べ物: {record.get('food_name', '不明')}
 カロリー: {calories_str}
 場所: {record.get('location', '記録なし')}
 備考: {record.get('notes', 'なし')}"""
-        
         formatted_records.append(formatted_record)
-    
     return '\n\n'.join(formatted_records)
 
 @app.route('/api/health', methods=['GET'])
