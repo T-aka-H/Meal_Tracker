@@ -6,7 +6,7 @@ const SUPABASE_URL = 'https://nhnanyzkcxlysugllpde.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI0NTk5NzAsImV4cCI6MjAxODAzNTk3MH0.H0HPGJ-YFGFpuGzpTtQj-kHQUTXnxqTZhHGvhJfSQnE';
 
 // グローバル変数
-let supabase = null;
+let supabaseClient = null; // 変数名を変更
 let currentUser = null;
 let currentUserId = null;
 let editingId = null;
@@ -524,99 +524,6 @@ function addAIDiagnosisStyles() {
     document.head.appendChild(style);
 }
 
-// app.jsの initializeSupabase 関数を以下のように修正
-
-async function initializeSupabase() {
-    console.log('🔄 Supabase接続開始...');
-    const statusDiv = document.getElementById('connectionStatus');
-    if (statusDiv) {
-        statusDiv.textContent = 'データベース接続中...';
-        statusDiv.className = 'status';
-    }
-
-    try {
-        // Supabaseクライアントの初期化（タイムアウトを延長）
-        const initPromise = new Promise(async (resolve, reject) => {
-            try {
-                // createClientの前にsupabaseが読み込まれているか確認
-                if (typeof window.supabase === 'undefined') {
-                    throw new Error('Supabaseライブラリが読み込まれていません');
-                }
-
-                supabaseClient = window.supabase.createClient(
-                    config.supabaseUrl,
-                    config.supabaseAnonKey
-                );
-                
-                console.log('✅ Supabaseクライアント作成成功');
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
-        });
-
-        // タイムアウトを10秒に延長
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('createClient関数の待機がタイムアウトしました')), 10000);
-        });
-
-        await Promise.race([initPromise, timeoutPromise]);
-
-        // 接続テストを実行（リトライ付き）
-        let testSuccess = false;
-        let retryCount = 0;
-        const maxRetries = 3;
-        
-        while (!testSuccess && retryCount < maxRetries) {
-            try {
-                const { data, error } = await supabaseClient
-                    .from('meal_records')
-                    .select('id')
-                    .limit(1);
-
-                if (error) {
-                    throw error;
-                }
-
-                console.log('📊 接続テスト成功');
-                testSuccess = true;
-                
-                if (statusDiv) {
-                    statusDiv.textContent = '✅ データベース接続完了';
-                    statusDiv.className = 'status success';
-                }
-            } catch (error) {
-                retryCount++;
-                console.warn(`📊 接続テスト失敗 (試行 ${retryCount}/${maxRetries}):`, error.message);
-                
-                if (retryCount < maxRetries) {
-                    // 再試行前に少し待つ
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                } else {
-                    throw error;
-                }
-            }
-        }
-
-    } catch (error) {
-        console.error('❌ Supabase接続エラー:', error);
-        
-        if (statusDiv) {
-            statusDiv.textContent = '❌ データベース接続失敗';
-            statusDiv.className = 'status error';
-        }
-        
-        // エラーメッセージを表示
-        showNotification(
-            'データベースへの接続に失敗しました。ページを再読み込みしてください。',
-            'error'
-        );
-        
-        // Supabaseクライアントをnullに設定
-        supabaseClient = null;
-        throw error;
-    }
-}
 // 統計情報の削除
 function forceRemoveStats() {
     const stats = document.querySelectorAll('[class*="stat"]');
@@ -681,7 +588,7 @@ async function loadSupabaseClient() {
             setTimeout(() => {
                 clearInterval(checkSupabase);
                 reject(new Error('Supabaseクライアントライブラリのロードがタイムアウトしました'));
-            }, 5000);
+            }, 10000);
         };
         script.onerror = () => {
             console.error('Supabaseクライアントライブラリのロード失敗');
@@ -691,16 +598,22 @@ async function loadSupabaseClient() {
     });
 }
 
-// Supabaseの初期化
+// Supabaseの初期化（修正版）
 async function initializeSupabase() {
     console.log('🔄 Supabase接続開始...');
+    const statusDiv = document.getElementById('connectionStatus');
+    if (statusDiv) {
+        statusDiv.textContent = 'データベース接続中...';
+        statusDiv.className = 'status';
+    }
+
     try {
-        // Supabaseクライアントの作成
-        if (typeof supabase === 'undefined') {
-            console.log('supabaseClientをロード中...');
+        // Supabaseライブラリの読み込みを確認
+        if (typeof window.supabase === 'undefined') {
+            console.log('Supabaseライブラリを動的読み込み中...');
             await loadSupabaseClient();
         }
-        
+
         // createClientが利用可能になるまで待機
         const waitForCreateClient = () => {
             return new Promise((resolve, reject) => {
@@ -714,30 +627,63 @@ async function initializeSupabase() {
                 setTimeout(() => {
                     clearInterval(check);
                     reject(new Error('createClient関数の待機がタイムアウトしました'));
-                }, 5000);
+                }, 10000);
             });
         };
 
         await waitForCreateClient();
         
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // Supabaseクライアントを作成（グローバル変数に代入）
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabaseクライアント作成成功');
 
-        // 接続テスト
-        const { data, error, status } = await supabase
-            .from('users')
-            .select('*')
-            .limit(1);
+        // 接続テスト（リトライ機能付き）
+        let testSuccess = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (!testSuccess && retryCount < maxRetries) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('users')
+                    .select('id')
+                    .limit(1);
 
-        if (error) throw error;
+                if (error) {
+                    throw error;
+                }
 
-        console.log('📊 接続テストレスポンス:', status);
-        console.log('📊 取得データ:', data);
+                console.log('📊 接続テスト成功');
+                testSuccess = true;
+                
+                if (statusDiv) {
+                    statusDiv.textContent = '✅ データベース接続完了';
+                    statusDiv.className = 'status success';
+                }
+            } catch (error) {
+                retryCount++;
+                console.warn(`📊 接続テスト失敗 (試行 ${retryCount}/${maxRetries}):`, error.message);
+                
+                if (retryCount < maxRetries) {
+                    // 再試行前に少し待つ
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } else {
+                    throw error;
+                }
+            }
+        }
 
         return true;
     } catch (error) {
         console.error('❌ Supabase接続エラー:', error);
-        showNotification('データベース接続に失敗しました: ' + error.message, 'error');
+        
+        if (statusDiv) {
+            statusDiv.textContent = '❌ データベース接続失敗';
+            statusDiv.className = 'status error';
+        }
+        
+        showNotification('データベースへの接続に失敗しました。ページを再読み込みしてください。', 'error');
+        supabaseClient = null;
         return false;
     }
 }
@@ -746,11 +692,11 @@ async function initializeSupabase() {
 async function loadUsers() {
     console.log('ユーザー読み込み開始');
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             throw new Error('Supabaseクライアントが初期化されていません');
         }
 
-        const { data: users, error } = await supabase
+        const { data: users, error } = await supabaseClient
             .from('users')
             .select('*')
             .order('created_at', { ascending: true });
@@ -1495,8 +1441,11 @@ async function initialize() {
         
         // その他の初期化処理
         setupEventListeners();
-        await initializeSupabase();
-        await loadUsers();
+        const supabaseInitialized = await initializeSupabase();
+        
+        if (supabaseInitialized) {
+            await loadUsers();
+        }
         
         console.log('アプリケーション初期化完了');
     } catch (error) {
@@ -1578,7 +1527,7 @@ async function debugTest() {
     console.log('デバッグテスト開始');
     
     try {
-        const result = await supabase
+        const result = await supabaseClient
             .from('users')
             .insert([{ name: 'テストユーザー2024' }]);
         
