@@ -589,17 +589,65 @@ function setDefaultDateTime() {
     console.log('デフォルト日時を設定');
 }
 
+// Supabaseクライアントライブラリの動的ロード
+async function loadSupabaseClient() {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+        script.onload = () => {
+            console.log('Supabaseクライアントライブラリのロード完了');
+            // グローバルなsupabaseオブジェクトが利用可能になるまで待機
+            const checkSupabase = setInterval(() => {
+                if (window.supabase) {
+                    clearInterval(checkSupabase);
+                    resolve();
+                }
+            }, 100);
+            
+            // タイムアウト設定
+            setTimeout(() => {
+                clearInterval(checkSupabase);
+                reject(new Error('Supabaseクライアントライブラリのロードがタイムアウトしました'));
+            }, 5000);
+        };
+        script.onerror = () => {
+            console.error('Supabaseクライアントライブラリのロード失敗');
+            reject(new Error('Supabaseクライアントライブラリのロードに失敗しました'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
 // Supabaseの初期化
 async function initializeSupabase() {
     console.log('🔄 Supabase接続開始...');
     try {
         // Supabaseクライアントの作成
-        if (typeof supabaseClient === 'undefined') {
+        if (typeof supabase === 'undefined') {
             console.log('supabaseClientをロード中...');
             await loadSupabaseClient();
         }
         
-        supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        // createClientが利用可能になるまで待機
+        const waitForCreateClient = () => {
+            return new Promise((resolve, reject) => {
+                const check = setInterval(() => {
+                    if (window.supabase && window.supabase.createClient) {
+                        clearInterval(check);
+                        resolve();
+                    }
+                }, 100);
+
+                setTimeout(() => {
+                    clearInterval(check);
+                    reject(new Error('createClient関数の待機がタイムアウトしました'));
+                }, 5000);
+            });
+        };
+
+        await waitForCreateClient();
+        
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabaseクライアント作成成功');
 
         // 接続テスト
@@ -619,24 +667,6 @@ async function initializeSupabase() {
         showNotification('データベース接続に失敗しました: ' + error.message, 'error');
         return false;
     }
-}
-
-// Supabaseクライアントライブラリの動的ロード
-async function loadSupabaseClient() {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-        script.onload = () => {
-            console.log('Supabaseクライアントライブラリのロード完了');
-            window.supabaseClient = supabase;
-            resolve();
-        };
-        script.onerror = () => {
-            console.error('Supabaseクライアントライブラリのロード失敗');
-            reject(new Error('Supabaseクライアントライブラリのロードに失敗しました'));
-        };
-        document.head.appendChild(script);
-    });
 }
 
 // ユーザー一覧の読み込み
