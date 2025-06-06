@@ -3,151 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.supabase.co; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co http://localhost:* https://localhost:* https://nhnanyzkcxlysugllpde.supabase.co https://meal-tracker-2-jyq6.onrender.com;">
     <title>食事記録アプリ</title>
-    <!-- 最新のSupabaseライブラリを使用 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase.min.js"></script>
-    <!-- バックアップCDN -->
-    <script>
-        if (typeof window.supabase === 'undefined') {
-            document.write('<script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"><\/script>');
-        }
-    </script>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://unpkg.com/cohere-js@1.0.0/dist/cohere.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <!-- 必要な要素を追加 -->
+    <div id="app">
         <header>
-            <h1>食事記録アプリ</h1>
-            <div id="userSection" class="user-section">
-                <select id="userSelect">
-                    <option value="">ユーザーを選択</option>
-                </select>
-                <button onclick="showAddUserModal()" class="add-user-btn">➕ ユーザー追加</button>
-                <button onclick="showDeleteUserModal()" class="delete-user-btn">🗑️ ユーザー削除</button>
-            </div>
+            <h1>🍽️ 食事記録アプリ</h1>
         </header>
-
-        <div id="currentUserDisplay" style="display: none;">
-            <h2>現在のユーザー: <span id="currentUserName"></span></h2>
-        </div>
-
-        <main id="mainContent" style="display: none;">
-            <section class="form-section">
-                <h3>食事を記録</h3>
-                <form id="mealForm" onsubmit="return false;">
-                    <div class="form-row">
+        
+        <main>
+            <!-- 接続状態表示 -->
+            <div id="connectionStatus" class="status"></div>
+            
+            <!-- ユーザーセクション -->
+            <section id="userSection" style="display: none;">
+                <h2>👤 ユーザー選択</h2>
+                <div class="user-controls">
+                    <select id="userSelect" onchange="switchUser(this.value)">
+                        <option value="">ユーザーを選択してください</option>
+                    </select>
+                    <button onclick="showAddUserModal()" class="add-button">👤 ユーザー追加</button>
+                    <button onclick="refreshUsers()" class="refresh-button">🔄 更新</button>
+                </div>
+            </section>
+            
+            <!-- 現在のユーザー表示 -->
+            <div id="currentUserDisplay" style="display: none;">
+                <h3>現在のユーザー: <span id="currentUserName"></span></h3>
+                <div class="user-actions">
+                    <button onclick="showDeleteUserModal()" class="delete-button">🗑️ ユーザー削除</button>
+                    <button onclick="downloadUserData()" class="download-button">📥 データダウンロード</button>
+                    <button onclick="clearUserData()" class="clear-button">🗑️ 全記録削除</button>
+                </div>
+            </div>
+            
+            <!-- メインコンテンツ -->
+            <div id="mainContent" style="display: none;">
+                <!-- 食事記録フォーム -->
+                <section class="form-section">
+                    <h2>📝 食事記録</h2>
+                    <form id="mealForm">
                         <div class="form-group">
-                            <label for="date">日付</label>
+                            <label for="date">日付:</label>
                             <input type="date" id="date" required>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="time">時間</label>
+                            <label for="time">時間:</label>
                             <input type="time" id="time" required>
                         </div>
-                    </div>
-
-                    <div class="form-row">
+                        
                         <div class="form-group">
-                            <label for="mealType">食事の種類</label>
+                            <label for="mealType">食事の種類:</label>
                             <select id="mealType" required>
+                                <option value="">選択してください</option>
                                 <option value="朝食">朝食</option>
                                 <option value="昼食">昼食</option>
                                 <option value="夕食">夕食</option>
                                 <option value="間食">間食</option>
                             </select>
                         </div>
+                        
                         <div class="form-group">
-                            <label for="foodName">食事内容</label>
+                            <label for="foodName">食べ物:</label>
                             <input type="text" id="foodName" required>
                         </div>
-                    </div>
-
-                    <div class="form-row">
+                        
                         <div class="form-group">
-                            <label for="calories">カロリー (kcal)</label>
-                            <input type="number" id="calories">
+                            <label for="calories">カロリー (任意):</label>
+                            <input type="number" id="calories" min="0">
                         </div>
+                        
                         <div class="form-group">
-                            <label for="location">場所</label>
+                            <label for="location">場所 (任意):</label>
                             <input type="text" id="location">
                         </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="notes">メモ</label>
-                        <textarea id="notes"></textarea>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" onclick="addMealRecord()">
+                        
+                        <div class="form-group">
+                            <label for="notes">備考 (任意):</label>
+                            <textarea id="notes" rows="3"></textarea>
+                        </div>
+                        
+                        <button type="submit">
                             📝 記録を追加
-                            <span id="addLoading" class="loading-spinner" style="display: none;"></span>
+                            <span id="addLoading" style="display: none;">⏳</span>
                         </button>
-                    </div>
-                </form>
-            </section>
-
-            <section class="records-section">
-                <h3>食事記録一覧</h3>
-                <div class="records-actions">
-                    <button onclick="downloadUserData()" class="action-button">
-                        <span class="icon">📥</span> CSVダウンロード
-                    </button>
-                    <button onclick="getAIAdvice()" class="action-button">
-                        <span class="icon">🤖</span> AI診断
-                    </button>
-                </div>
-                <div id="ai-advice" class="ai-advice-container"></div>
-                <div id="recordsList" class="records-container"></div>
-            </section>
+                    </form>
+                </section>
+                
+                <!-- 記録一覧 -->
+                <section class="records-section">
+                    <h2>📋 記録一覧</h2>
+                    <div id="recordsList"></div>
+                </section>
+            </div>
         </main>
     </div>
-
-    <!-- モーダル -->
+    
+    <!-- モーダル：ユーザー追加 -->
     <div id="addUserModal" class="modal">
         <div class="modal-content">
-            <h2>ユーザーを追加</h2>
-            <div class="form-group">
-                <label for="newUserName">名前</label>
-                <input type="text" id="newUserName" required>
-            </div>
+            <h3>👤 新しいユーザーを追加</h3>
+            <input type="text" id="newUserName" placeholder="ユーザー名" maxlength="50">
             <div class="modal-actions">
-                <button onclick="addUser()">
-                    追加
-                    <span id="addUserLoading" class="loading-spinner" style="display: none;"></span>
-                </button>
-                <button onclick="closeModal('addUserModal')" class="secondary">キャンセル</button>
+                <button onclick="addUser()" class="confirm-button">追加</button>
+                <button onclick="closeModal('addUserModal')" class="cancel-button">キャンセル</button>
             </div>
         </div>
     </div>
-
+    
+    <!-- モーダル：ユーザー削除確認 -->
     <div id="deleteUserModal" class="modal">
         <div class="modal-content">
-            <h2>ユーザーを削除</h2>
-            <p>現在のユーザーを削除しますか？<br>この操作は取り消せません。</p>
+            <h3>⚠️ ユーザー削除の確認</h3>
+            <p>このユーザーとすべての記録を削除してもよろしいですか？<br>この操作は取り消せません。</p>
             <div class="modal-actions">
-                <button onclick="deleteUser()" class="danger">
-                    削除
-                    <span id="deleteUserLoading" class="loading-spinner" style="display: none;"></span>
+                <button onclick="deleteUser()" class="delete-button">
+                    削除 <span id="deleteUserLoading" style="display: none;">⏳</span>
                 </button>
-                <button onclick="closeModal('deleteUserModal')" class="secondary">キャンセル</button>
+                <button onclick="closeModal('deleteUserModal')" class="cancel-button">キャンセル</button>
             </div>
         </div>
     </div>
-
+    
+    <!-- モーダル：確認ダイアログ -->
     <div id="confirmModal" class="modal">
         <div class="modal-content">
-            <h2>確認</h2>
+            <h3>⚠️ 確認</h3>
             <p id="confirmMessage"></p>
             <div class="modal-actions">
-                <button id="confirmBtn" class="danger">はい</button>
-                <button onclick="closeModal('confirmModal')" class="secondary">いいえ</button>
+                <button id="confirmBtn" class="delete-button">確認</button>
+                <button onclick="closeModal('confirmModal')" class="cancel-button">キャンセル</button>
             </div>
         </div>
     </div>
-
+    
     <script src="app.js"></script>
 </body>
 </html>
