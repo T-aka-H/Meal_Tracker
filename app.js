@@ -445,7 +445,7 @@ async function connectSupabase() {
         const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
-                'apikey': supabaseAnonKey,
+                'apikey': SUPABASE_ANON_KEY,
                 'Authorization': `Bearer ${supabaseAnonKey}`,
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
