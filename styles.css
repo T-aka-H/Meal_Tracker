@@ -735,4 +735,47 @@ textarea {
     .btn-edit, .btn-danger {
         margin: 2px 0;
     }
+}
+
+/* AI診断セクション */
+.ai-diagnosis-section {
+    margin-bottom: 30px;
+    display: flex;
+    gap: 20px;
+}
+
+.diagnosis-column {
+    flex: 1;
+    background-color: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.diagnosis-column h3 {
+    margin: 0 0 16px 0;
+    color: #1f2937;
+    font-size: 1.2em;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.diagnosis-content {
+    white-space: pre-wrap;
+    line-height: 1.6;
+    color: #374151;
+}
+
+.diagnosis-loading {
+    text-align: center;
+    padding: 20px;
+    color: #6b7280;
+}
+
+.diagnosis-error {
+    color: #dc2626;
+    padding: 12px;
+    background-color: #fee2e2;
+    border-radius: 6px;
+    margin-top: 8px;
 } 

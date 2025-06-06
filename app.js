@@ -17,124 +17,50 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // AI食事診断の実行
 async function getAIFoodDiagnosis() {
-    if (!currentUserId) {
-        showNotification('ユーザーを選択してください', 'error');
-        return;
-    }
-
-    // 診断ボタンを無効化してローディング表示
-    const diagnosisBtn = document.getElementById('aiDiagnosisBtn');
-    const loadingSpinner = document.getElementById('aiDiagnosisLoading');
-    
-    if (diagnosisBtn) diagnosisBtn.disabled = true;
-    if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
-
     try {
-        // 最新の食事記録を取得（過去1週間）
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        
-        const response = await fetch(
-            `${supabaseUrl}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
+        // 診断中の表示
+        document.getElementById('diagnosisJa').textContent = '診断中...';
+        document.getElementById('diagnosisEn').textContent = 'Analyzing...';
 
-        if (!response.ok) {
-            throw new Error('食事記録の取得に失敗しました');
-        }
-
-        const mealRecords = await response.json();
-
-        if (!mealRecords || mealRecords.length === 0) {
-            showAIDiagnosisResult('食事記録が見つかりません。まず食事を記録してから診断をお試しください。');
-            return;
-        }
-
-        // バックエンドAPIに診断を依頼
+        const mealRecords = await loadMealRecords();
         const diagnosis = await getAIDiagnosisFromBackend(mealRecords);
-        showAIDiagnosisResult(diagnosis);
 
+        // 診断結果の表示
+        document.getElementById('diagnosisJa').textContent = diagnosis.diagnosisJa;
+        document.getElementById('diagnosisEn').textContent = diagnosis.diagnosisEn;
     } catch (error) {
-        console.error('AI食事診断エラー:', error);
-        showNotification('AI診断中にエラーが発生しました: ' + error.message, 'error');
-        showAIDiagnosisResult('申し訳ございません。診断中にエラーが発生しました。しばらく時間をおいてから再度お試しください。');
-    } finally {
-        // ローディング状態を解除
-        if (diagnosisBtn) diagnosisBtn.disabled = false;
-        if (loadingSpinner) loadingSpinner.style.display = 'none';
+        console.error(' AI食事診断エラー:', error);
+        document.getElementById('diagnosisJa').innerHTML = `<div class="diagnosis-error">エラー: ${error.message}</div>`;
+        document.getElementById('diagnosisEn').innerHTML = `<div class="diagnosis-error">Error: ${error.message}</div>`;
     }
 }
 
 // バックエンドAPIを使用して食事診断を取得
 async function getAIDiagnosisFromBackend(mealRecords) {
     try {
-        const requestBody = {
-            meal_records: mealRecords
-        };
-
-        // カスタムプロンプトがある場合は追加
-        if (customPromptTemplate) {
-            requestBody.custom_prompt = customPromptTemplate;
-        }
-
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
+        const response = await fetch('https://meal-tracker-1-y2dy.onrender.com/api/ai-diagnosis', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
             },
-            body: JSON.stringify(requestBody)
-        });
-
-        // エラーの詳細な情報を取得
-        const responseText = await response.text();
-        console.log('APIレスポンス詳細:', {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
-            body: responseText
+            body: JSON.stringify({ meal_records: mealRecords })
         });
 
         if (!response.ok) {
-            let errorMessage;
-            try {
-                const errorData = JSON.parse(responseText);
-                errorMessage = errorData.error || `APIエラー: ${response.status} ${response.statusText}`;
-            } catch (e) {
-                errorMessage = `APIエラー: ${response.status} ${response.statusText}\nレスポンス: ${responseText.substring(0, 200)}...`;
-            }
-            throw new Error(errorMessage);
+            throw new Error(`APIエラー: ${response.status} \nレスポンス: ${await response.text()}`);
         }
 
-        let data;
-        try {
-            data = JSON.parse(responseText);
-        } catch (e) {
-            console.error('JSONパースエラー:', e);
-            throw new Error(`レスポンスの解析に失敗しました: ${responseText.substring(0, 200)}...`);
-        }
-        
+        const data = await response.json();
         if (!data.success) {
-            throw new Error(data.error || '診断に失敗しました');
+            throw new Error(data.error || 'AI診断に失敗しました');
         }
 
-        console.log('AI診断完了:', {
-            meal_count: data.meal_count,
-            custom_prompt_used: data.prompt_used,
-            diagnosis_length: data.diagnosis.length
-        });
-
-        return data.diagnosis;
-
+        return {
+            diagnosisJa: data.diagnosis_ja,
+            diagnosisEn: data.diagnosis_en
+        };
     } catch (error) {
-        console.error('バックエンドAPI呼び出しエラー:', error);
+        console.error(' バックエンドAPI呼び出しエラー:', error);
         throw new Error(`AI診断サービスへの接続に失敗しました: ${error.message}`);
     }
 }
