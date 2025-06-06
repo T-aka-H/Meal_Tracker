@@ -441,12 +441,12 @@ async function connectSupabase() {
         // 新しいSupabaseクライアントを作成
         supabase = window.supabase.createClient(getSupabaseUrl(), getSupabaseKey());
 
-        // プロキシサーバー経由でアクセス
-        const response = await fetch(`${PROXY_URL}/rest/v1/users?limit=1`, {
+        // 直接Supabaseにアクセス
+        const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`,
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${supabaseAnonKey}`,
                 'Accept': 'application/json',
                 'Content-Type': 'application/json'
             }
@@ -536,41 +536,31 @@ async function loadUsers() {
         const response = await fetch(`${supabaseUrl}/rest/v1/users?select=*`, {
             method: 'GET',
             headers: {
-                'apikey': getSupabaseKey(),
-                'Authorization': `Bearer ${getSupabaseKey()}`,
-                'Accept': 'application/json'
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${supabaseAnonKey}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             }
         });
 
-        console.log('ユーザー読み込みレスポンス:', response.status);
-        
         if (!response.ok) {
-            const errorText = await response.text();
-            console.error('ユーザー読み込みエラーレスポンス:', errorText);
-            throw new Error(`ユーザー読み込み失敗: ${response.status}`);
+            throw new Error('ユーザー一覧の取得に失敗しました');
         }
 
         const users = await response.json();
-        console.log('読み込まれたユーザー:', users);
+        console.log('取得したユーザー:', users);
         
         allUsers = users;
-        updateUserCount(users.length);
-        updateUserSelect();
-
-        // 最後に選択されていたユーザーを復元
-        const lastUserId = localStorage.getItem('lastUserId');
-        if (lastUserId) {
-            console.log('前回のユーザーIDを復元:', lastUserId);
-            const userSelect = document.getElementById('userSelect');
-            if (userSelect) {
-                userSelect.value = lastUserId;
-                await switchUser();
-            }
+        displayUsers(users);
+        
+        // 最初のユーザーを選択
+        if (users.length > 0 && !currentUserId) {
+            await switchUser(users[0].id);
         }
-
+        
     } catch (error) {
         console.error('ユーザー読み込みエラー:', error);
-        showNotification('ユーザーの読み込みに失敗しました', 'error');
+        showNotification('ユーザー一覧の読み込みに失敗しました', 'error');
     }
 }
 
@@ -584,19 +574,17 @@ async function refreshUsers() {
 }
 
 // ユーザーの切り替え
-async function switchUser() {
-    const userSelect = document.getElementById('userSelect');
-    const selectedUserId = userSelect.value;
-    console.log('ユーザー切り替え:', selectedUserId);
+async function switchUser(userId) {
+    console.log('ユーザー切り替え:', userId);
 
-    if (!selectedUserId) {
+    if (!userId) {
         showNotification('ユーザーを選択してください', 'error');
         return;
     }
 
     try {
         const response = await fetch(
-            `${supabaseUrl}/rest/v1/users?id=eq.${selectedUserId}`,
+            `${supabaseUrl}/rest/v1/users?id=eq.${userId}`,
             {
                 method: 'GET',
                 headers: {
