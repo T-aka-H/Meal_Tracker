@@ -604,139 +604,85 @@ function setDefaultDateTime() {
     console.log('デフォルト日時を設定');
 }
 
-// Supabaseへの接続
-async function connectSupabase() {
+// Supabaseの初期化
+async function initializeSupabase() {
+    console.log('🔄 Supabase接続開始...');
     try {
-        console.log('🔄 Supabase接続開始...');
-        
-        if (window.supabase && window.supabase.createClient) {
-            supabase = window.supabase.createClient(supabaseUrl, SUPABASE_ANON_KEY);
-            console.log('✅ Supabaseクライアント作成成功');
-        } else {
-            throw new Error('Supabase SDKが読み込まれていません');
-        }
+        // Supabaseクライアントの作成
+        supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabaseクライアント作成成功');
 
         // 接続テスト
-        const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
-            method: 'GET',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
+        const { data, error, status } = await supabase
+            .from('users')
+            .select('*')
+            .limit(1);
 
-        console.log('📊 接続テストレスポンス:', response.status);
+        if (error) throw error;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('❌ 接続テストエラー詳細:', errorText);
-            throw new Error(`接続テストに失敗: ${response.status} - ${errorText}`);
-        }
-
-        const data = await response.json();
+        console.log('📊 接続テストレスポンス:', status);
         console.log('📊 取得データ:', data);
 
-        // 接続成功時の処理
-        const userSection = document.getElementById('userSection');
-        if (userSection) {
-            userSection.style.display = 'block';
-        }
-
-        await loadUsers();
-        showNotification('Supabaseに接続しました', 'success');
-        updateConnectionStatus(true);
         return true;
-
     } catch (error) {
         console.error('❌ Supabase接続エラー:', error);
-        showNotification(`Supabaseへの接続に失敗しました: ${error.message}`, 'error');
-        updateConnectionStatus(false);
+        showNotification('データベース接続に失敗しました: ' + error.message, 'error');
         return false;
-    }
-}
-
-// 接続状態の更新
-function updateConnectionStatus(connected) {
-    const status = document.getElementById('connectionStatus');
-    if (!status) return;
-    
-    if (connected) {
-        status.className = 'status connected';
-        status.textContent = '✅ Supabaseに接続済み';
-    } else {
-        status.className = 'status disconnected';
-        status.textContent = '❌ 接続に失敗しました。設定を確認してください。';
     }
 }
 
 // ユーザー一覧の読み込み
 async function loadUsers() {
     console.log('ユーザー読み込み開始');
-    
     try {
-        const response = await fetch(`${supabaseUrl}/rest/v1/users?select=*`, {
-            method: 'GET',
-            headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
+        const { data: users, error } = await supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: true });
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`ユーザー一覧の取得に失敗: ${response.status} - ${errorText}`);
-        }
+        if (error) throw error;
 
-        const users = await response.json();
         console.log('取得したユーザー:', users);
-        
-        allUsers = users;
-        updateUserSelect();
-        
+
+        // ユーザー選択肢の更新
+        updateUserOptions(users);
+
         // 最初のユーザーを選択
-        if (users.length > 0 && !currentUserId) {
-            await switchUser(users[0].id);
+        if (users && users.length > 0) {
+            const firstUser = users[0];
+            await switchUser(firstUser.id);
         }
-        
+
+        return true;
     } catch (error) {
         console.error('ユーザー読み込みエラー:', error);
-        showNotification('ユーザー一覧の読み込みに失敗しました', 'error');
+        showNotification('ユーザー情報の読み込みに失敗しました: ' + error.message, 'error');
+        return false;
     }
 }
 
-// ユーザー選択肢を更新する関数
-function updateUserSelect() {
+// ユーザー選択肢の更新
+function updateUserOptions(users) {
     console.log('ユーザー選択肢の更新開始');
     const userSelect = document.getElementById('userSelect');
-    if (!userSelect) {
-        console.error('userSelect要素が見つかりません');
-        return;
-    }
-    
-    // 現在の選択値を保持
-    const currentValue = userSelect.value;
+    if (!userSelect) return;
 
-    // 既存のオプションをクリア（最初の「選択してください」は残す）
-    while (userSelect.options.length > 1) {
-        userSelect.remove(1);
-    }
+    // 既存のオプションをクリア
+    userSelect.innerHTML = '';
 
-    // ユーザーオプションを追加
-    allUsers.forEach(user => {
+    // ユーザー選択肢を追加
+    users.forEach(user => {
         const option = document.createElement('option');
         option.value = user.id;
         option.textContent = user.name;
         userSelect.appendChild(option);
     });
 
-    // 以前の選択を復元（存在する場合）
-    if (currentValue && Array.from(userSelect.options).some(opt => opt.value === currentValue)) {
-        userSelect.value = currentValue;
-    }
+    // 新規ユーザー追加オプション
+    const newUserOption = document.createElement('option');
+    newUserOption.value = 'new';
+    newUserOption.textContent = '+ 新規ユーザー';
+    userSelect.appendChild(newUserOption);
 }
 
 // ユーザーの切り替え
@@ -1427,7 +1373,12 @@ async function initialize() {
         
         // 既存の初期化処理
         setDefaultDateTime();
-        clearStats();
+        
+        // 統計情報の初期化
+        forceRemoveStats();
+        startStatsRemovalWatcher();
+        
+        // その他の初期化処理
         setupEventListeners();
         await initializeSupabase();
         await loadUsers();
