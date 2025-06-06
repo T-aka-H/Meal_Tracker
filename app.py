@@ -212,8 +212,9 @@ Please provide friendly and practical advice. Explain technical terms in an easy
                 return jsonify({'error': 'リクエストボディが空です'}), 400
 
             meal_records = data.get('meal_records', [])
-            custom_prompt_ja = data.get('custom_prompt_ja', app.config['DEFAULT_PROMPT_TEMPLATE_JA'])
-            custom_prompt_en = data.get('custom_prompt_en', app.config['DEFAULT_PROMPT_TEMPLATE_EN'])
+            # カスタムプロンプトがnullまたは空の場合はデフォルトのプロンプトを使用
+            custom_prompt_ja = data.get('custom_prompt_ja') or app.config['DEFAULT_PROMPT_TEMPLATE_JA']
+            custom_prompt_en = data.get('custom_prompt_en') or app.config['DEFAULT_PROMPT_TEMPLATE_EN']
 
             if not meal_records:
                 logger.error('食事記録が提供されていません')

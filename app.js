@@ -1417,31 +1417,54 @@ async function updateMealRecord() {
     }
 }
 
-// 初期化
+// アプリケーションの初期化
 async function initialize() {
     console.log('アプリケーション初期化開始');
     
-    // デフォルト日時設定
-    setDefaultDateTime();
-    
-    // 統計情報削除
-    forceRemoveStats();
-    startStatsRemovalWatcher();
-    
-    // イベントリスナー設定
-    setupEventListeners();
-    
-    // AI診断機能を初期化
-    initializeAIDiagnosis();
-    
-    // Supabase接続
-    const connected = await connectSupabase();
-    if (!connected) {
-        console.error('Supabase接続に失敗しました');
-        return;
+    try {
+        // カスタムプロンプトの初期化
+        await loadCustomPrompt();
+        
+        // 既存の初期化処理
+        setDefaultDateTime();
+        clearStats();
+        setupEventListeners();
+        await initializeSupabase();
+        await loadUsers();
+        
+        console.log('アプリケーション初期化完了');
+    } catch (error) {
+        console.error('初期化エラー:', error);
+        showNotification('アプリケーションの初期化に失敗しました: ' + error.message, 'error');
     }
-    
-    console.log('アプリケーション初期化完了');
+}
+
+// カスタムプロンプトの取得処理を更新
+async function loadCustomPrompt() {
+    try {
+        // デフォルトプロンプトを取得
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        if (!response.ok) {
+            throw new Error('プロンプトの取得に失敗しました');
+        }
+
+        const data = await response.json();
+        if (data.success && data.default_template) {
+            // ローカルストレージにプロンプトが保存されていない場合のみデフォルトを設定
+            if (!localStorage.getItem('customPromptJa')) {
+                localStorage.setItem('customPromptJa', data.default_template);
+            }
+            // プロンプト編集フォームがある場合は更新
+            const promptTextarea = document.getElementById('promptTemplate');
+            if (promptTextarea && !promptTextarea.value) {
+                promptTextarea.value = localStorage.getItem('customPromptJa') || data.default_template;
+            }
+        }
+    } catch (error) {
+        console.error('プロンプト取得エラー:', error);
+        // エラーが発生しても初期化は続行
+        console.warn('デフォルトプロンプトを使用します');
+    }
 }
 
 // DOMContentLoaded イベント
