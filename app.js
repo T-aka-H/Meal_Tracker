@@ -439,8 +439,8 @@ async function connectSupabase() {
         // 新しいSupabaseクライアントを作成
         supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
 
-        // ここはSupabase本体に直接アクセス
-        const response = await fetch(`${supabaseUrl}/rest/v1/users?limit=1`, {
+        // プロキシサーバー経由でアクセス
+        const response = await fetch(`${PROXY_URL}/rest/v1/users?limit=1`, {
             method: 'GET',
             headers: {
                 'apikey': supabaseAnonKey,
@@ -479,9 +479,7 @@ async function connectSupabase() {
 
 // SupabaseキーとURLの取得関数
 function getSupabaseKey() {
-    return localStorage.getItem('supabaseKey') || 
-           document.getElementById('supabaseKey')?.value || 
-           '';
+    return supabaseAnonKey;
 }
 
 function getSupabaseUrl() {
