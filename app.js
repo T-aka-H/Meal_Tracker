@@ -1448,6 +1448,19 @@ async function initialize() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM読み込み完了');
     initialize();
+
+    // プロンプト編集フォームの初期化
+    const promptForm = document.getElementById('promptEditForm');
+    if (promptForm) {
+        // ページ読み込み時にカスタムプロンプトを読み込む
+        loadCustomPrompt();
+
+        promptForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const promptTemplate = document.getElementById('promptTemplate').value;
+            await saveCustomPrompt(promptTemplate);
+        });
+    }
 });
 
 // DOMの変更を監視して統計情報を削除
@@ -1560,55 +1573,6 @@ function generateSimpleAdvice(records) {
     }
     
     return advice;
-}
-
-// プロンプトの保存処理を追加
-async function saveCustomPrompt(promptTemplate) {
-    try {
-        // ローカルストレージに保存
-        localStorage.setItem('customPromptJa', promptTemplate);
-        
-        // サーバーにも保存（オプション）
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ prompt_template: promptTemplate })
-        });
-
-        if (!response.ok) {
-            throw new Error('プロンプトの保存に失敗しました');
-        }
-
-        showNotification('プロンプトを保存しました', 'success');
-    } catch (error) {
-        console.error('プロンプト保存エラー:', error);
-        showNotification('プロンプトの保存に失敗しました: ' + error.message, 'error');
-    }
-}
-
-// プロンプトの取得処理を追加
-async function loadCustomPrompt() {
-    try {
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
-        if (!response.ok) {
-            throw new Error('プロンプトの取得に失敗しました');
-        }
-
-        const data = await response.json();
-        if (data.success && data.default_template) {
-            localStorage.setItem('customPromptJa', data.default_template);
-            // プロンプト編集フォームがある場合は更新
-            const promptTextarea = document.getElementById('promptTemplate');
-            if (promptTextarea) {
-                promptTextarea.value = data.default_template;
-            }
-        }
-    } catch (error) {
-        console.error('プロンプト取得エラー:', error);
-        showNotification('プロンプトの取得に失敗しました: ' + error.message, 'error');
-    }
 }
 
 console.log('app.js読み込み完了');
