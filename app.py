@@ -187,8 +187,8 @@ Please provide friendly and practical advice. Explain technical terms in an easy
         try:
             test_prompt = "こんにちは。これはAPIテストです。短く返答してください。"
             
-            # 最新のGemini APIエンドポイントを使用
-            url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={app.config["GEMINI_API_KEY"]}'
+            # 修正: 正しいモデル名を使用
+            url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={app.config["GEMINI_API_KEY"]}'
             
             response = requests.post(
                 url,
@@ -396,8 +396,8 @@ def get_gemini_diagnosis(prompt, api_key):
     logger.info('Gemini APIにリクエスト送信')
 
     try:
-        # 正しいGemini REST APIエンドポイント
-        url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}'
+        # 修正: 正しいモデル名を使用
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}'
         
         gemini_response = requests.post(
             url,
