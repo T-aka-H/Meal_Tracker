@@ -1456,9 +1456,25 @@ function addAIDiagnosisElements() {
         return;
     }
 
-    const aiDiagnosisSection = document.createElement('div');
-    aiDiagnosisSection.className = 'ai-diagnosis-section';
-    aiDiagnosisSection.innerHTML = `
+    // AI診断セクションを探す
+    let aiDiagnosisSection = mainContent.querySelector('.ai-diagnosis-section');
+    
+    // AI診断セクションが存在しない場合は作成
+    if (!aiDiagnosisSection) {
+        aiDiagnosisSection = document.createElement('section');
+        aiDiagnosisSection.className = 'ai-diagnosis-section';
+        
+        // フォームセクションの前に挿入
+        const formSection = mainContent.querySelector('.form-section');
+        if (formSection) {
+            mainContent.insertBefore(aiDiagnosisSection, formSection);
+        } else {
+            mainContent.appendChild(aiDiagnosisSection);
+        }
+    }
+
+    // LLM選択と診断コントロールを追加
+    const controlsHTML = `
         <!-- LLM選択セクション -->
         <div class="llm-selector-section" style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 15px; border: 2px solid #e1e5e9;">
             <h4 style="color: #1e293b; margin-bottom: 15px; text-align: center; font-weight: 600;">🤖 AI診断エンジン選択</h4>
@@ -1508,20 +1524,24 @@ function addAIDiagnosisElements() {
         </div>
     `;
 
-    // フォームセクションの前に挿入
-    const formSection = mainContent.querySelector('.form-section');
-    if (formSection) {
-        mainContent.insertBefore(aiDiagnosisSection, formSection);
+    // 既存の診断結果エリアの前に制御要素を挿入
+    const aiDiagnosisResult = aiDiagnosisSection.querySelector('#aiDiagnosisResult');
+    if (aiDiagnosisResult) {
+        aiDiagnosisResult.insertAdjacentHTML('beforebegin', controlsHTML);
     } else {
-        mainContent.appendChild(aiDiagnosisSection);
+        aiDiagnosisSection.innerHTML = controlsHTML + `
+            <div id="aiDiagnosisResult" style="display: none; margin-top: 20px;">
+                <div class="diagnosis-content">
+                    <h3>日本語診断結果</h3>
+                    <div id="diagnosisJa" class="diagnosis-text"></div>
+                </div>
+                <div class="diagnosis-content mt-20">
+                    <h3>English Analysis</h3>
+                    <div id="diagnosisEn" class="diagnosis-text"></div>
+                </div>
+            </div>
+        `;
     }
-
-    // AI診断結果表示エリアも追加
-    const resultArea = document.createElement('div');
-    resultArea.id = 'aiDiagnosisResult';
-    resultArea.style.display = 'none';
-    resultArea.style.marginTop = '20px';
-    mainContent.insertBefore(resultArea, formSection || null);
 
     // 保存されたLLMプロバイダーを読み込み
     loadSavedLLMProvider();

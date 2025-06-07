@@ -35,6 +35,38 @@
             
             <!-- メインコンテンツ -->
             <div id="mainContent" style="display: none;">
+                <!-- AI診断セクション -->
+                <section class="ai-diagnosis-section">
+                    <div class="engine-selection">
+                        <label>AIエンジン:</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="llmProvider" value="cohere" checked> Cohere</label>
+                            <label><input type="radio" name="llmProvider" value="gemini"> Gemini</label>
+                        </div>
+                    </div>
+                    <div class="ai-btn-group">
+                        <button onclick="getAIFoodDiagnosis()" class="btn btn-primary">
+                            AI食事診断を実行
+                            <span id="diagnosisLoading" class="loading" style="display: none;"></span>
+                        </button>
+                        <button onclick="testAIConnection()" class="btn btn-secondary">
+                            AI接続テスト
+                        </button>
+                    </div>
+                    
+                    <!-- AI診断結果表示エリア -->
+                    <div id="aiDiagnosisResult" style="display: none;">
+                        <div class="diagnosis-content">
+                            <h3>日本語診断結果</h3>
+                            <div id="diagnosisJa" class="diagnosis-text"></div>
+                        </div>
+                        <div class="diagnosis-content mt-20">
+                            <h3>English Analysis</h3>
+                            <div id="diagnosisEn" class="diagnosis-text"></div>
+                        </div>
+                    </div>
+                </section>
+                
                 <!-- 食事記録フォーム -->
                 <section class="form-section">
                     <h2>食事記録</h2>
@@ -85,38 +117,6 @@
                             <span id="addLoading" class="loading" style="display: none;"></span>
                         </button>
                     </form>
-                </section>
-                
-                <!-- AI診断セクション -->
-                <section class="ai-diagnosis-section">
-                    <div class="engine-selection">
-                        <label>AIエンジン:</label>
-                        <div class="radio-group">
-                            <label><input type="radio" name="llmProvider" value="cohere" checked> Cohere</label>
-                            <label><input type="radio" name="llmProvider" value="gemini"> Gemini</label>
-                        </div>
-                    </div>
-                    <div class="ai-btn-group">
-                        <button onclick="getAIFoodDiagnosis()" class="btn btn-primary">
-                            AI食事診断を実行
-                            <span id="diagnosisLoading" class="loading" style="display: none;"></span>
-                        </button>
-                        <button onclick="testAIConnection()" class="btn btn-secondary">
-                            AI接続テスト
-                        </button>
-                    </div>
-                    
-                    <!-- 診断結果表示エリア -->
-                    <div id="aiDiagnosisResult" style="display: none;">
-                        <div class="diagnosis-content">
-                            <h3>日本語診断結果</h3>
-                            <div id="diagnosisJa" class="diagnosis-text"></div>
-                        </div>
-                        <div class="diagnosis-content mt-20">
-                            <h3>English Analysis</h3>
-                            <div id="diagnosisEn" class="diagnosis-text"></div>
-                        </div>
-                    </div>
                 </section>
                 
                 <!-- 記録一覧 -->
