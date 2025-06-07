@@ -37,23 +37,39 @@
             <div id="mainContent" style="display: none;">
                 <!-- AI診断セクション -->
                 <section class="ai-diagnosis-section">
-                    <div class="engine-selection">
-                        <label>AIエンジン:</label>
-                        <div class="radio-group">
-                            <label><input type="radio" name="llmProvider" value="cohere" checked> Cohere</label>
-                            <label><input type="radio" name="llmProvider" value="gemini"> Gemini</label>
+                    <h2>🤖 AI食事診断</h2>
+                    <p class="section-description">過去1週間の食事記録を基に、選択したAIが栄養バランスとアドバイスを提供します</p>
+                    
+                    <!-- AI診断コントロール -->
+                    <div class="ai-controls">
+                        <div class="engine-selection">
+                            <label>AIエンジン:</label>
+                            <div class="radio-group">
+                                <label><input type="radio" name="llmProvider" value="cohere" checked> Cohere</label>
+                                <label><input type="radio" name="llmProvider" value="gemini"> Gemini</label>
+                            </div>
+                        </div>
+                        <div class="ai-btn-group">
+                            <button onclick="getAIFoodDiagnosis()" class="btn btn-primary">
+                                🔍 AI診断を実行
+                                <span id="diagnosisLoading" class="loading" style="display: none;"></span>
+                            </button>
+                            <button onclick="showPromptEditorModal()" class="btn btn-secondary">
+                                ✏️ プロンプト編集
+                            </button>
+                            <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
+                                🔗 Cohereテスト
+                            </button>
+                            <button id="testGeminiBtn" onclick="testGeminiConnection()" class="btn btn-secondary">
+                                🔗 Geminiテスト
+                            </button>
+                        </div>
+                        <div class="test-status">
+                            <div id="cohereTestStatus"></div>
+                            <div id="geminiTestStatus"></div>
                         </div>
                     </div>
-                    <div class="ai-btn-group">
-                        <button onclick="getAIFoodDiagnosis()" class="btn btn-primary">
-                            AI食事診断を実行
-                            <span id="diagnosisLoading" class="loading" style="display: none;"></span>
-                        </button>
-                        <button onclick="testAIConnection()" class="btn btn-secondary">
-                            AI接続テスト
-                        </button>
-                    </div>
-                    
+
                     <!-- AI診断結果表示エリア -->
                     <div id="aiDiagnosisResult" style="display: none;">
                         <div class="diagnosis-content">

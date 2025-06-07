@@ -316,43 +316,100 @@ h1 {
 
 /* AI診断セクション */
 .ai-diagnosis-section {
-    margin-top: 30px;
-    text-align: center;
-}
-
-.ai-btn-group {
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    margin-bottom: 30px;
-}
-
-#aiDiagnosisResult {
     background-color: var(--white);
     padding: 30px;
     border-radius: 12px;
     box-shadow: 0 2px 8px var(--shadow-light);
-    display: none;
+    margin-bottom: 30px;
+}
+
+.ai-diagnosis-section h2 {
+    font-size: 24px;
+    color: var(--primary-black);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.section-description {
+    color: var(--medium-gray);
+    margin-bottom: 20px;
+    font-size: 0.95em;
+}
+
+.ai-controls {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #e1e5e9;
+    margin-bottom: 20px;
+}
+
+.engine-selection {
+    margin-bottom: 20px;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.ai-btn-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.test-status {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    font-size: 0.9em;
+    color: var(--medium-gray);
+}
+
+#aiDiagnosisResult {
+    background-color: var(--background-gray);
+    padding: 25px;
+    border-radius: 12px;
+    margin-top: 20px;
 }
 
 .diagnosis-content {
-    text-align: left;
+    background: var(--white);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px var(--shadow-light);
+}
+
+.diagnosis-content:last-child {
+    margin-bottom: 0;
 }
 
 .diagnosis-content h3 {
     font-size: 18px;
-    font-weight: 600;
     color: var(--primary-black);
-    margin-bottom: 20px;
-    padding-bottom: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
     border-bottom: 2px solid var(--border-color);
 }
 
 .diagnosis-text {
-    white-space: pre-wrap;
-    line-height: 1.8;
+    font-size: 0.95em;
+    line-height: 1.6;
     color: var(--dark-gray);
-    font-size: 15px;
+    white-space: pre-wrap;
 }
 
 /* ローディング */
@@ -450,8 +507,20 @@ h1 {
         padding: 25px;
     }
     
+    .ai-diagnosis-section {
+        padding: 20px;
+    }
+    
+    .ai-controls {
+        padding: 15px;
+    }
+    
     .ai-btn-group {
         flex-direction: column;
+    }
+    
+    .test-status {
+        grid-template-columns: 1fr;
     }
     
     .record-header {
