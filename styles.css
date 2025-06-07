@@ -95,13 +95,13 @@ h1 {
 .container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 40px 20px;
+    padding: 40px 40px;
 }
 
 /* フォームセクション */
 .form-section {
     background-color: var(--white);
-    padding: 30px;
+    padding: 40px;
     border-radius: 12px;
     box-shadow: 0 2px 8px var(--shadow-light);
     margin-bottom: 30px;
@@ -210,7 +210,7 @@ h1 {
 /* 記録リスト */
 .records-section {
     background-color: var(--white);
-    padding: 30px;
+    padding: 40px;
     border-radius: 12px;
     box-shadow: 0 2px 8px var(--shadow-light);
 }
@@ -403,6 +403,13 @@ h1 {
     color: var(--primary-black);
 }
 
+.modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
 .close-btn {
     background: none;
     border: none;
@@ -410,6 +417,11 @@ h1 {
     color: var(--medium-gray);
     cursor: pointer;
     transition: color 0.2s;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .close-btn:hover {
@@ -423,9 +435,13 @@ h1 {
         gap: 20px;
     }
     
+    .container {
+        padding: 20px;
+    }
+    
     .form-section,
     .records-section {
-        padding: 20px;
+        padding: 25px;
     }
     
     .ai-btn-group {
@@ -440,6 +456,11 @@ h1 {
     .record-details {
         flex-wrap: wrap;
     }
+    
+    .engine-selection {
+        flex-direction: column;
+        align-items: flex-start;
+    }
 }
 
 /* ユーティリティ */
@@ -453,6 +474,47 @@ h1 {
 
 .mb-20 {
     margin-bottom: 20px;
+}
+
+/* ユーザー管理セクション */
+.user-management {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.user-management #currentUserActions {
+    display: flex;
+    gap: 12px;
+    margin-left: auto;
+}
+
+/* エンジン選択セクション専用スタイル */
+.engine-selection {
+    background-color: var(--background-gray);
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.engine-selection label {
+    font-size: 14px;
+    color: var(--primary-black);
+    font-weight: 500;
+    margin: 0;
+}
+
+.engine-selection input[type="radio"] {
+    margin-right: 6px;
+}
+
+.engine-selection .radio-group {
+    display: flex;
+    gap: 20px;
 }
 
 /* フォーカスリング */
