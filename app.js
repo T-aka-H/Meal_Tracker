@@ -1096,7 +1096,65 @@ function loadSavedLLMProvider() {
 }
 
 // AI食事診断の実行（LLM選択対応版）
+
 async function getAIFoodDiagnosis() {
+    try {
+        // 選択されたLLMプロバイダーを取得
+        const llmProvider = getSelectedLLMProvider();
+        console.log(`選択されたLLMプロバイダー: ${llmProvider}`);
+
+        // 診断中の表示
+        document.getElementById('diagnosisJa').textContent = `${llmProvider.toUpperCase()}で診断中...`;
+        document.getElementById('diagnosisEn').textContent = `Analyzing with ${llmProvider.toUpperCase()}...`;
+
+        // 最新の食事記録を取得（過去1週間）
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('食事記録の取得に失敗しました');
+        }
+
+        const mealRecords = await response.json();
+
+        if (!mealRecords || mealRecords.length === 0) {
+            document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
+            document.getElementById('diagnosisEn').textContent = 'No meal records found. Please record some meals before requesting a diagnosis.';
+            return;
+        }
+
+        // AI診断を取得（LLMプロバイダー指定）
+        const diagnosis = await getAIDiagnosisFromBackend(mealRecords, llmProvider);
+
+        // 診断結果の表示
+        document.getElementById('diagnosisJa').textContent = diagnosis.diagnosisJa;
+        document.getElementById('diagnosisEn').textContent = diagnosis.diagnosisEn;
+
+        // 使用されたLLMプロバイダーの表示を更新
+        updateLLMProviderStatus(diagnosis.llmProvider || llmProvider);
+
+        // 診断結果セクションを表示
+        document.getElementById('aiDiagnosisResult').style.display = 'block';
+
+    } catch (error) {
+        console.error('AI食事診断エラー:', error);
+        document.getElementById('diagnosisJa').innerHTML = `<div class="diagnosis-error">エラー: ${error.message}</div>`;
+        document.getElementById('diagnosisEn').innerHTML = `<div class="diagnosis-error">Error: ${error.message}</div>`;
+    }
+}
+
     try {
         // 選択されたLLMプロバイダーを取得
         const llmProvider = getSelectedLLMProvider();
