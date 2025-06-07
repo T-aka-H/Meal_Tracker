@@ -1088,6 +1088,12 @@ async function getAIFoodDiagnosis() {
     }
     resultContainer.style.display = 'block';
 
+    // ローディング表示の制御
+    const loadingSpinner = document.getElementById('diagnosisLoading');
+    if (loadingSpinner) {
+        loadingSpinner.style.display = 'inline-block';
+    }
+
     try {
         // 選択されたLLMプロバイダーを取得
         const llmProvider = getSelectedLLMProvider();
@@ -1148,6 +1154,12 @@ async function getAIFoodDiagnosis() {
         
         if (diagnosisJa) diagnosisJa.innerHTML = errorMessage;
         if (diagnosisEn) diagnosisEn.innerHTML = errorMessageEn;
+    } finally {
+        // ローディング表示を非表示に
+        const loadingSpinner = document.getElementById('diagnosisLoading');
+        if (loadingSpinner) {
+            loadingSpinner.style.display = 'none';
+        }
     }
 }
 
