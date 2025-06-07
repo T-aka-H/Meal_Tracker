@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -26,7 +27,7 @@
             <div id="userManagement" class="user-management">
                 <button onclick="showAddUserModal()" class="btn btn-secondary">ユーザー追加</button>
                 <button onclick="refreshUsers()" class="btn btn-secondary">更新</button>
-                <div id="currentUserActions" style="display: none;">
+                <div id="currentUserActions" >
                     <button onclick="showDeleteUserModal()" class="btn btn-outline">ユーザー削除</button>
                     <button onclick="downloadUserData()" class="btn btn-outline">データダウンロード</button>
                     <button onclick="clearUserData()" class="btn btn-outline">全記録削除</button>
@@ -34,7 +35,7 @@
             </div>
             
             <!-- メインコンテンツ -->
-            <div id="mainContent" style="display: none;">
+            <div id="mainContent" >
                 <!-- AI診断セクション -->
                 <section class="ai-diagnosis-section">
                     <h2>🤖 AI食事診断</h2>
@@ -52,7 +53,7 @@
                         <div class="ai-btn-group">
                             <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
                                 AI診断を実行
-                                <span id="diagnosisLoading" class="loading" style="display: none;"></span>
+                                <span id="diagnosisLoading" class="loading" ></span>
                             </button>
                             <button onclick="showPromptEditorModal()" class="btn btn-secondary">
                                 ✏️ プロンプト編集
@@ -72,7 +73,7 @@
                 </section>
 
                 <!-- AI診断結果表示エリア -->
-                <section id="aiDiagnosisResult" class="diagnosis-result-section" style="display: none;">
+                <section id="aiDiagnosisResult" class="diagnosis-result-section" >
                     <div class="diagnosis-content">
                         <h3>日本語診断結果</h3>
                         <div id="diagnosisJa" class="diagnosis-text"></div>
@@ -130,7 +131,7 @@
                         
                         <button type="submit" class="btn btn-primary">
                             記録を追加
-                            <span id="addLoading" class="loading" style="display: none;"></span>
+                            <span id="addLoading" class="loading" ></span>
                         </button>
                     </form>
                 </section>
@@ -172,7 +173,7 @@
             <div class="modal-actions">
                 <button onclick="deleteUser()" class="btn btn-primary">
                     削除
-                    <span id="deleteUserLoading" class="loading" style="display: none;"></span>
+                    <span id="deleteUserLoading" class="loading" ></span>
                 </button>
                 <button onclick="closeModal('deleteUserModal')" class="btn btn-secondary">キャンセル</button>
             </div>
