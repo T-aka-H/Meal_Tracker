@@ -319,7 +319,7 @@ h1 {
     background-color: #f0f7ff;
     padding: 20px;
     border-radius: 8px;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
 .ai-diagnosis-section h2 {
@@ -373,16 +373,17 @@ h1 {
     color: var(--medium-gray);
 }
 
-#aiDiagnosisResult {
+/* 診断結果セクション */
+.diagnosis-result-section {
     background-color: var(--white);
-    padding: 20px;
+    padding: 25px;
     border-radius: 8px;
-    margin-top: 20px;
+    margin-bottom: 20px;
     border: 1px solid var(--border-color);
 }
 
 .diagnosis-content {
-    margin-bottom: 20px;
+    margin-bottom: 25px;
 }
 
 .diagnosis-content:last-child {
@@ -394,6 +395,8 @@ h1 {
     color: var(--primary-black);
     margin-bottom: 15px;
     font-weight: 600;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .diagnosis-text {
@@ -498,7 +501,8 @@ h1 {
         padding: 25px;
     }
     
-    .ai-diagnosis-section {
+    .ai-diagnosis-section,
+    .diagnosis-result-section {
         padding: 15px;
     }
     
