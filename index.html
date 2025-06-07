@@ -7,6 +7,129 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+    <div id="app">
+        <header>
+            <h1>🍽️ 食事記録アプリ <span class="version-badge">v2.0</span></h1>
+            <p class="subtitle">AI診断機能搭載 - Cohere & Gemini対応</p>
+        </header>
+        
+        <main>
+            <!-- 接続状態表示 -->
+            <div id="connectionStatus" class="status"></div>
+            
+            <!-- ユーザーセクション -->
+            <section id="userSection">
+                <h2>👤 ユーザー選択</h2>
+                <div class="user-controls">
+                    <select id="userSelect" onchange="switchUser(this.value)">
+                        <option value="">ユーザーを選択してください</option>
+                    </select>
+                    <button onclick="showAddUserModal()" class="add-button">👤 ユーザー追加</button>
+                    <button onclick="refreshUsers()" class="refresh-button">🔄 更新</button>
+                </div>
+            </section>
+            
+            <!-- 現在のユーザー表示 -->
+            <div id="currentUserDisplay" style="display: none;">
+                <h3>現在のユーザー: <span id="currentUserName"></span></h3>
+                <div class="user-actions">
+                    <button onclick="showDeleteUserModal()" class="delete-button">🗑️ ユーザー削除</button>
+                    <button onclick="downloadUserData()" class="download-button">📥 データダウンロード</button>
+                    <button onclick="clearUserData()" class="clear-button">🗑️ 全記録削除</button>
+                </div>
+            </div>
+            
+            <!-- AI診断結果表示エリア（動的に追加される部分のプレースホルダー） -->
+            <div id="aiDiagnosisResult" style="margin-top: 20px;">
+                <!-- AI診断結果がここに動的に表示されます -->
+            </div>
+            
+            <!-- AI診断セクション（診断結果表示用） -->
+            <div class="ai-diagnosis-section" style="display: none;" id="diagnosisResultsSection">
+                <div class="diagnosis-column">
+                    <h3>🍽️ 日本語診断結果</h3>
+                    <div id="diagnosisJa" class="diagnosis-content">
+                        診断結果がここに表示されます...
+                    </div>
+                </div>
+                <div class="diagnosis-column">
+                    <h3>🌐 AI Meal Analysis (English)</h3>
+                    <div id="diagnosisEn" class="diagnosis-content">
+                        Diagnosis results will be displayed here...
+                    </div>
+                </div>
+            </div>
+            
+            <!-- メインコンテンツ -->
+            <div id="mainContent" style="display: none;">
+                <!-- 食事記録フォーム -->
+                <section class="form-section">
+                    <h2>📝 食事記録</h2>
+                    <form id="mealForm">
+                        <div class="form-group">
+                            <label for="date">日付:</label>
+                            <input type="date" id="date" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="time">時間:</label>
+                            <input type="time" id="time" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="mealType">食事の種類:</label>
+                            <select id="mealType" required>
+                                <option value="">選択してください</option>
+                                <option value="朝食">朝食</option>
+                                <option value="昼食">昼食</option>
+                                <option value="夕食">夕食</option>
+                                <option value="間食">間食</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="foodName">食べ物:</label>
+                            <input type="text" id="foodName" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="calories">カロリー (任意):</label>
+                            <input type="number" id="calories" min="0">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="location">場所 (任意):</label>
+                            <input type="text" id="location">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="notes">備考 (任意):</label>
+                            <textarea id="notes" rows="3"></textarea>
+                        </div>
+                        
+                        <button type="submit">
+                            📝 記録を追加
+                            <span id="addLoading" style="display: none;">⏳</span>
+                        </button>
+                    </form>
+                </section>
+                
+                <!-- 記録一覧 -->
+                <section class="records-section">
+                    <h2>📋 記録一覧</h2>
+                    <div id="recordsList"></div>
+                </section>
+            </div>
+        </main>
+    <!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食事記録アプリ v2.0 - AI診断対応</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
     <!-- 必要な要素を追加 -->
     <div id="app">
         <header>
