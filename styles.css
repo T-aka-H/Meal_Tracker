@@ -91,6 +91,12 @@ h1 {
     border-color: var(--dark-gray);
 }
 
+.current-user {
+    font-size: 14px;
+    color: var(--medium-gray);
+    margin-left: 10px;
+}
+
 /* メインコンテナ */
 .container {
     max-width: 1200px;

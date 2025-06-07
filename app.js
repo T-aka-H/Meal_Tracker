@@ -1449,14 +1449,15 @@ function addAIDiagnosisElements() {
         return;
     }
 
-    // currentUserDisplayの直後に追加する
-    const currentUserDisplay = document.getElementById('currentUserDisplay');
-    if (!currentUserDisplay) {
-        console.error('currentUserDisplay要素が見つかりません');
+    // メインコンテンツエリアに追加
+    const mainContent = document.getElementById('mainContent');
+    if (!mainContent) {
+        console.error('mainContent要素が見つかりません');
         return;
     }
 
     const aiDiagnosisSection = document.createElement('div');
+    aiDiagnosisSection.className = 'ai-diagnosis-section';
     aiDiagnosisSection.innerHTML = `
         <!-- LLM選択セクション -->
         <div class="llm-selector-section" style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 15px; border: 2px solid #e1e5e9;">
@@ -1507,22 +1508,20 @@ function addAIDiagnosisElements() {
         </div>
     `;
 
-    // currentUserDisplayの直後に挿入
-    currentUserDisplay.insertAdjacentElement('afterend', aiDiagnosisSection);
-
-    // AI診断結果表示エリアも記録一覧の前に追加
-    const mainContent = document.getElementById('mainContent');
-    if (mainContent) {
-        const resultArea = document.createElement('div');
-        resultArea.id = 'aiDiagnosisResult';
-        resultArea.style.marginTop = '20px';
-        
-        // form-sectionの前に挿入
-        const formSection = mainContent.querySelector('.form-section');
-        if (formSection) {
-            mainContent.insertBefore(resultArea, formSection);
-        }
+    // フォームセクションの前に挿入
+    const formSection = mainContent.querySelector('.form-section');
+    if (formSection) {
+        mainContent.insertBefore(aiDiagnosisSection, formSection);
+    } else {
+        mainContent.appendChild(aiDiagnosisSection);
     }
+
+    // AI診断結果表示エリアも追加
+    const resultArea = document.createElement('div');
+    resultArea.id = 'aiDiagnosisResult';
+    resultArea.style.display = 'none';
+    resultArea.style.marginTop = '20px';
+    mainContent.insertBefore(resultArea, formSection || null);
 
     // 保存されたLLMプロバイダーを読み込み
     loadSavedLLMProvider();
