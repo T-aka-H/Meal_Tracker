@@ -19,18 +19,9 @@ load_dotenv()
 
 def create_app():
     app = Flask(__name__)
-    # CORSの設定を更新
-    CORS(app, resources={
-        r"/*": {
-            "origins": [
-                "https://meal-tracker-1-y2dy.onrender.com",  # フロントエンド
-                "http://localhost:5000",
-                "http://127.0.0.1:5000"
-            ],
-            "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
-        }
-    })
+    
+    # CORSの設定（シンプル化）
+    CORS(app, origins="*")
 
     # 環境変数から設定を取得
     app.config['COHERE_API_KEY'] = os.environ.get('COHERE_API_KEY')
@@ -318,14 +309,6 @@ Please provide friendly and practical advice. Explain technical terms in an easy
     def internal_error(error):
         logger.error(f'内部サーバーエラー: {str(error)}')
         return jsonify({'error': '内部サーバーエラーが発生しました'}), 500
-
-    # CORS設定の強化
-    @app.after_request
-    def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-        return response
 
     return app
 
