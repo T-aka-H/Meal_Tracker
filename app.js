@@ -1444,102 +1444,70 @@ function formatDiagnosisForDisplay(diagnosis) {
 
 // HTML要素の追加（修正版 - LLM選択UI含む）
 function addAIDiagnosisElements() {
-    // 既にAI診断セクションが存在する場合は追加しない
+    // 既にAI診断ボタンが存在する場合は追加しない
     if (document.getElementById('aiDiagnosisBtn')) {
         return;
     }
 
-    // メインコンテンツエリアに追加
+    // メインコンテンツエリアを取得
     const mainContent = document.getElementById('mainContent');
     if (!mainContent) {
         console.error('mainContent要素が見つかりません');
         return;
     }
 
-    // AI診断セクションを探す
-    let aiDiagnosisSection = mainContent.querySelector('.ai-diagnosis-section');
-    
-    // AI診断セクションが存在しない場合は作成
+    // 既存のAI診断セクションを取得
+    const aiDiagnosisSection = mainContent.querySelector('.ai-diagnosis-section');
     if (!aiDiagnosisSection) {
-        aiDiagnosisSection = document.createElement('section');
-        aiDiagnosisSection.className = 'ai-diagnosis-section';
-        
-        // フォームセクションの前に挿入
-        const formSection = mainContent.querySelector('.form-section');
-        if (formSection) {
-            mainContent.insertBefore(aiDiagnosisSection, formSection);
-        } else {
-            mainContent.appendChild(aiDiagnosisSection);
+        console.error('ai-diagnosis-section要素が見つかりません');
+        return;
+    }
+
+    // AI診断コントロールを追加
+    const aiControls = aiDiagnosisSection.querySelector('.ai-controls');
+    if (!aiControls) {
+        console.error('ai-controls要素が見つかりません');
+        return;
+    }
+
+    // エンジン選択部分を更新
+    const engineSelection = aiControls.querySelector('.engine-selection');
+    if (engineSelection) {
+        const radioGroup = engineSelection.querySelector('.radio-group');
+        if (radioGroup) {
+            radioGroup.innerHTML = `
+                <label><input type="radio" name="llmProvider" value="cohere" checked onchange="setLLMProvider('cohere')"> Cohere</label>
+                <label><input type="radio" name="llmProvider" value="gemini" onchange="setLLMProvider('gemini')"> Gemini</label>
+            `;
         }
     }
 
-    // LLM選択と診断コントロールを追加
-    const controlsHTML = `
-        <!-- LLM選択セクション -->
-        <div class="llm-selector-section" style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 15px; border: 2px solid #e1e5e9;">
-            <h4 style="color: #1e293b; margin-bottom: 15px; text-align: center; font-weight: 600;">🤖 AI診断エンジン選択</h4>
-            <div class="llm-options" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="llm-option">
-                    <input type="radio" id="cohereRadio" name="llmProvider" value="cohere" checked onchange="setLLMProvider('cohere')">
-                    <label for="cohereRadio" style="display: block; padding: 15px; border: 2px solid #e1e5e9; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; background: white; text-align: center;">
-                        <div class="llm-brand" style="font-size: 1.2em; font-weight: 700; margin-bottom: 8px; color: #3b82f6;">Cohere</div>
-                        <div class="llm-description" style="font-size: 0.8em; opacity: 0.8;">高精度な自然言語処理</div>
-                    </label>
-                </div>
-                <div class="llm-option">
-                    <input type="radio" id="geminiRadio" name="llmProvider" value="gemini" onchange="setLLMProvider('gemini')">
-                    <label for="geminiRadio" style="display: block; padding: 15px; border: 2px solid #e1e5e9; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; background: white; text-align: center;">
-                        <div class="llm-brand" style="font-size: 1.2em; font-weight: 700; margin-bottom: 8px; color: #059669;">Gemini</div>
-                        <div class="llm-description" style="font-size: 0.8em; opacity: 0.8;">Google の最新AI技術</div>
-                    </label>
-                </div>
-            </div>
-        </div>
+    // ボタングループを更新
+    const btnGroup = aiControls.querySelector('.ai-btn-group');
+    if (btnGroup) {
+        btnGroup.innerHTML = `
+            <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
+                🔍 AI診断を実行
+                <span id="diagnosisLoading" class="loading" style="display: none;"></span>
+            </button>
+            <button onclick="showPromptEditorModal()" class="btn btn-secondary">
+                ✏️ プロンプト編集
+            </button>
+            <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
+                🔗 Cohereテスト
+            </button>
+            <button id="testGeminiBtn" onclick="testGeminiConnection()" class="btn btn-secondary">
+                🔗 Geminiテスト
+            </button>
+        `;
+    }
 
-        <!-- AI診断コントロール -->
-        <div class="ai-diagnosis-control-section" style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-            <h4 style="color: #1f2937; margin-bottom: 10px;">🍽️ AI食事診断</h4>
-            <p style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
-                過去1週間の食事記録を基に、選択したAIが栄養バランスとアドバイスを提供します
-            </p>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
-                <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
-                    🔍 AI診断を実行
-                    <span id="aiDiagnosisLoading" style="display: none;" class="loading-spinner"></span>
-                </button>
-                <button onclick="showPromptEditorModal()" class="btn btn-secondary">
-                    ✏️ プロンプト編集
-                </button>
-                <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
-                    🔗 Cohereテスト
-                </button>
-                <button id="testGeminiBtn" onclick="testGeminiConnection()" class="btn btn-secondary">
-                    🔗 Geminiテスト
-                </button>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
-                <div id="cohereTestStatus" style="color: #6b7280;"></div>
-                <div id="geminiTestStatus" style="color: #6b7280;"></div>
-            </div>
-        </div>
-    `;
-
-    // 既存の診断結果エリアの前に制御要素を挿入
-    const aiDiagnosisResult = aiDiagnosisSection.querySelector('#aiDiagnosisResult');
-    if (aiDiagnosisResult) {
-        aiDiagnosisResult.insertAdjacentHTML('beforebegin', controlsHTML);
-    } else {
-        aiDiagnosisSection.innerHTML = controlsHTML + `
-            <div id="aiDiagnosisResult" style="display: none; margin-top: 20px;">
-                <div class="diagnosis-content">
-                    <h3>日本語診断結果</h3>
-                    <div id="diagnosisJa" class="diagnosis-text"></div>
-                </div>
-                <div class="diagnosis-content mt-20">
-                    <h3>English Analysis</h3>
-                    <div id="diagnosisEn" class="diagnosis-text"></div>
-                </div>
-            </div>
+    // テストステータス表示エリアを更新
+    const testStatus = aiControls.querySelector('.test-status');
+    if (testStatus) {
+        testStatus.innerHTML = `
+            <div id="cohereTestStatus"></div>
+            <div id="geminiTestStatus"></div>
         `;
     }
 

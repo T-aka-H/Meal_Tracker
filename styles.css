@@ -316,15 +316,14 @@ h1 {
 
 /* AI診断セクション */
 .ai-diagnosis-section {
-    background-color: var(--white);
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px var(--shadow-light);
+    background-color: #f0f7ff;
+    padding: 20px;
+    border-radius: 8px;
     margin-bottom: 30px;
 }
 
 .ai-diagnosis-section h2 {
-    font-size: 24px;
+    font-size: 20px;
     color: var(--primary-black);
     margin-bottom: 10px;
     display: flex;
@@ -339,10 +338,6 @@ h1 {
 }
 
 .ai-controls {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    padding: 20px;
-    border-radius: 12px;
-    border: 2px solid #e1e5e9;
     margin-bottom: 20px;
 }
 
@@ -379,18 +374,15 @@ h1 {
 }
 
 #aiDiagnosisResult {
-    background-color: var(--background-gray);
-    padding: 25px;
-    border-radius: 12px;
+    background-color: var(--white);
+    padding: 20px;
+    border-radius: 8px;
     margin-top: 20px;
+    border: 1px solid var(--border-color);
 }
 
 .diagnosis-content {
-    background: var(--white);
-    padding: 20px;
-    border-radius: 8px;
     margin-bottom: 20px;
-    box-shadow: 0 1px 3px var(--shadow-light);
 }
 
 .diagnosis-content:last-child {
@@ -398,11 +390,10 @@ h1 {
 }
 
 .diagnosis-content h3 {
-    font-size: 18px;
+    font-size: 16px;
     color: var(--primary-black);
     margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid var(--border-color);
+    font-weight: 600;
 }
 
 .diagnosis-text {
@@ -508,10 +499,6 @@ h1 {
     }
     
     .ai-diagnosis-section {
-        padding: 20px;
-    }
-    
-    .ai-controls {
         padding: 15px;
     }
     
