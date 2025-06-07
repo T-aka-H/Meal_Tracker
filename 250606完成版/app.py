@@ -34,7 +34,6 @@ def create_app():
 
     # 環境変数から設定を取得
     app.config['COHERE_API_KEY'] = os.environ.get('COHERE_API_KEY')
-    app.config['GEMINI_API_KEY'] = os.environ.get('GEMINI_API_KEY')  # 新規追加
     app.config['SUPABASE_ANON_KEY'] = os.environ.get('SUPABASE_ANON_KEY')
     app.config['SUPABASE_URL'] = os.environ.get('SUPABASE_URL', 'https://nhnanyzkcxlysugllpde.supabase.co')
 
@@ -85,7 +84,6 @@ Please provide friendly and practical advice. Explain technical terms in an easy
             'timestamp': datetime.now().isoformat(),
             'environment': {
                 'COHERE_API_KEY': bool(app.config['COHERE_API_KEY']),
-                'GEMINI_API_KEY': bool(app.config['GEMINI_API_KEY']),  # 追加
                 'SUPABASE_ANON_KEY': bool(app.config['SUPABASE_ANON_KEY']),
                 'SUPABASE_URL': bool(app.config['SUPABASE_URL'])
             }
@@ -186,70 +184,9 @@ Please provide friendly and practical advice. Explain technical terms in an easy
                 'error': str(e)
             }), 500
 
-    @app.route('/api/test-gemini', methods=['POST'])
-    def test_gemini():
-        """Gemini API接続テスト"""
-        logger.debug('Gemini接続テストを実行')
-        
-        if not app.config['GEMINI_API_KEY']:
-            return jsonify({
-                'success': False,
-                'error': 'GEMINI_API_KEY が設定されていません'
-            }), 500
-        
-        try:
-            # 簡単なテストプロンプト
-            test_prompt = "こんにちは。これはAPIテストです。短く返答してください。"
-            
-            response = requests.post(
-                f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={app.config["GEMINI_API_KEY"]}',
-                headers={
-                    'Content-Type': 'application/json'
-                },
-                json={
-                    'contents': [{
-                        'parts': [{
-                            'text': test_prompt
-                        }]
-                    }],
-                    'generationConfig': {
-                        'maxOutputTokens': 50,
-                        'temperature': 0.5
-                    }
-                },
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                test_response = data['candidates'][0]['content']['parts'][0]['text'].strip()
-                
-                return jsonify({
-                    'success': True,
-                    'test_response': test_response,
-                    'message': 'Gemini API接続成功'
-                })
-            else:
-                return jsonify({
-                    'success': False,
-                    'error': f'APIエラー: {response.status_code}'
-                }), response.status_code
-                
-        except requests.exceptions.Timeout:
-            return jsonify({
-                'success': False,
-                'error': 'タイムアウト：APIの応答が遅いです'
-            }), 504
-        except Exception as e:
-            logger.error(f'Gemini接続テストエラー: {str(e)}')
-            return jsonify({
-                'success': False,
-                'error': str(e)
-            }), 500
-
     @app.route('/api/ai-diagnosis', methods=['POST', 'OPTIONS'])
     def ai_diagnosis():
-        """Cohere または Gemini AIを使用した食事診断API"""
+        """COHERE AIを使用した食事診断API"""
         logger.debug('AI診断エンドポイントにリクエストを受信')
         logger.debug(f'リクエストメソッド: {request.method}')
         logger.debug(f'リクエストヘッダー: {dict(request.headers)}')
@@ -262,6 +199,10 @@ Please provide friendly and practical advice. Explain technical terms in an easy
             response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
             return response
 
+        if not app.config['COHERE_API_KEY']:
+            logger.error('COHERE_API_KEY が設定されていません')
+            return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
+
         try:
             data = request.get_json()
             logger.debug(f'受信したリクエストデータ: {data}')
@@ -271,8 +212,6 @@ Please provide friendly and practical advice. Explain technical terms in an easy
                 return jsonify({'error': 'リクエストボディが空です'}), 400
 
             meal_records = data.get('meal_records', [])
-            llm_provider = data.get('llm_provider', 'cohere')  # 新規追加：デフォルトはcohere
-            
             # カスタムプロンプトがnullまたは空の場合はデフォルトのプロンプトを使用
             custom_prompt_ja = data.get('custom_prompt_ja') or app.config['DEFAULT_PROMPT_TEMPLATE_JA']
             custom_prompt_en = data.get('custom_prompt_en') or app.config['DEFAULT_PROMPT_TEMPLATE_EN']
@@ -281,44 +220,31 @@ Please provide friendly and practical advice. Explain technical terms in an easy
                 logger.error('食事記録が提供されていません')
                 return jsonify({'error': '食事記録が提供されていません'}), 400
 
-            # 選択されたLLMプロバイダーのAPIキーをチェック
-            if llm_provider == 'cohere' and not app.config['COHERE_API_KEY']:
-                return jsonify({'error': 'COHERE_API_KEY が設定されていません'}), 500
-            elif llm_provider == 'gemini' and not app.config['GEMINI_API_KEY']:
-                return jsonify({'error': 'GEMINI_API_KEY が設定されていません'}), 500
-
-            logger.info(f'食事記録数: {len(meal_records)}, LLMプロバイダー: {llm_provider}')
+            logger.info(f'食事記録数: {len(meal_records)}')
             meal_summary = format_meal_records_for_ai(meal_records)
             
             # 日本語の診断を取得
             prompt_ja = custom_prompt_ja.format(meal_summary=meal_summary)
-            if llm_provider == 'cohere':
-                diagnosis_ja = get_cohere_diagnosis(prompt_ja, app.config['COHERE_API_KEY'])
-            else:  # gemini
-                diagnosis_ja = get_gemini_diagnosis(prompt_ja, app.config['GEMINI_API_KEY'])
+            diagnosis_ja = get_cohere_diagnosis(prompt_ja, app.config['COHERE_API_KEY'])
             
             # 英語の診断を取得
             prompt_en = custom_prompt_en.format(meal_summary=meal_summary)
-            if llm_provider == 'cohere':
-                diagnosis_en = get_cohere_diagnosis(prompt_en, app.config['COHERE_API_KEY'])
-            else:  # gemini
-                diagnosis_en = get_gemini_diagnosis(prompt_en, app.config['GEMINI_API_KEY'])
+            diagnosis_en = get_cohere_diagnosis(prompt_en, app.config['COHERE_API_KEY'])
 
             response = jsonify({
                 'success': True,
                 'diagnosis_ja': diagnosis_ja,
                 'diagnosis_en': diagnosis_en,
-                'meal_count': len(meal_records),
-                'llm_provider': llm_provider  # 使用されたLLMプロバイダーを返す
+                'meal_count': len(meal_records)
             })
             response.headers['Access-Control-Allow-Origin'] = '*'
             return response
 
         except requests.exceptions.Timeout:
-            logger.error('AI API タイムアウト')
+            logger.error('COHERE API タイムアウト')
             return jsonify({'error': 'AI診断がタイムアウトしました。しばらく時間をおいて再度お試しください。'}), 504
         except requests.exceptions.RequestException as e:
-            logger.error(f'AI API リクエストエラー: {str(e)}')
+            logger.error(f'COHERE API リクエストエラー: {str(e)}')
             return jsonify({'error': 'AI診断サービスへの接続に失敗しました。'}), 503
         except Exception as e:
             logger.error(f'AI診断エラー: {str(e)}')
@@ -361,7 +287,7 @@ def format_meal_records_for_ai(records):
 
 def get_cohere_diagnosis(prompt, api_key):
     """COHEREを使用して診断を取得"""
-    logger.debug(f'生成されたCohereプロンプト: {prompt}')
+    logger.debug(f'生成されたプロンプト: {prompt}')
     logger.info('COHERE APIにリクエスト送信')
 
     try:
@@ -381,10 +307,11 @@ def get_cohere_diagnosis(prompt, api_key):
                 'stop_sequences': [],
                 'return_likelihoods': 'NONE'
             },
-            timeout=60
+            timeout=60  # タイムアウトを60秒に延長
         )
 
         logger.debug(f'COHERE APIレスポンス: {cohere_response.status_code}')
+        logger.debug(f'COHERE APIレスポンス内容: {cohere_response.text[:200]}...')
 
         if cohere_response.status_code != 200:
             error_msg = f"COHERE API エラー: {cohere_response.status_code}"
@@ -404,132 +331,8 @@ def get_cohere_diagnosis(prompt, api_key):
         logger.error(f'予期せぬエラー: {str(e)}')
         raise
 
-def get_gemini_diagnosis(prompt, api_key):
-    """Geminiを使用して診断を取得"""
-    logger.debug(f'生成されたGeminiプロンプト: {prompt[:200]}...')
-    logger.info('Gemini APIにリクエスト送信')
-
-    try:
-        gemini_response = requests.post(
-            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}',
-            headers={
-                'Content-Type': 'application/json'
-            },
-            json={
-                'contents': [{
-                    'parts': [{
-                        'text': prompt
-                    }]
-                }],
-                'generationConfig': {
-                    'maxOutputTokens': 800,
-                    'temperature': 0.7,
-                    'topP': 0.9,
-                    'topK': 40
-                },
-                'safetySettings': [
-                    {
-                        'category': 'HARM_CATEGORY_HARASSMENT',
-                        'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
-                    },
-                    {
-                        'category': 'HARM_CATEGORY_HATE_SPEECH',
-                        'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
-                    },
-                    {
-                        'category': 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
-                        'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
-                    },
-                    {
-                        'category': 'HARM_CATEGORY_DANGEROUS_CONTENT',
-                        'threshold': 'BLOCK_MEDIUM_AND_ABOVE'
-                    }
-                ]
-            },
-            timeout=60
-        )
-
-        logger.debug(f'Gemini APIレスポンス: {gemini_response.status_code}')
-
-        if gemini_response.status_code != 200:
-            error_msg = f"Gemini API エラー: {gemini_response.status_code}"
-            logger.error(f"{error_msg}: {gemini_response.text}")
-            raise Exception(error_msg)
-
-        gemini_data = gemini_response.json()
-        
-        # レスポンスの構造を確認
-        if 'candidates' not in gemini_data or len(gemini_data['candidates']) == 0:
-            logger.error(f'Gemini APIレスポンス構造エラー: {gemini_data}')
-            raise Exception('Gemini APIからの応答が予期された形式ではありません')
-        
-        candidate = gemini_data['candidates'][0]
-        
-        # セーフティフィルターによってブロックされた場合の処理
-        if 'finishReason' in candidate and candidate['finishReason'] != 'STOP':
-            logger.warning(f'Gemini API 生成停止理由: {candidate["finishReason"]}')
-            if candidate['finishReason'] == 'SAFETY':
-                return "申し訳ございませんが、安全性の観点から診断結果を生成できませんでした。別の方法でお試しください。"
-        
-        if 'content' not in candidate or 'parts' not in candidate['content']:
-            logger.error(f'Gemini APIコンテンツ構造エラー: {candidate}')
-            raise Exception('Gemini APIからの応答にコンテンツが含まれていません')
-        
-        text_content = candidate['content']['parts'][0]['text'].strip()
-        logger.debug(f'Gemini 生成テキスト長: {len(text_content)}')
-        
-        return text_content
-
-    except requests.exceptions.Timeout:
-        logger.error('Gemini API タイムアウト')
-        raise Exception('Gemini APIがタイムアウトしました。しばらく時間をおいて再度お試しください。')
-    except requests.exceptions.RequestException as e:
-        logger.error(f'Gemini APIリクエストエラー: {str(e)}')
-        raise Exception(f'Gemini APIへの接続に失敗しました: {str(e)}')
-    except KeyError as e:
-        logger.error(f'Gemini APIレスポンス解析エラー: {str(e)}')
-        raise Exception(f'Gemini APIからの応答形式が不正です: {str(e)}')
-    except Exception as e:
-        logger.error(f'Gemini 予期せぬエラー: {str(e)}')
-        raise Exception(f'Gemini API処理中にエラーが発生しました: {str(e)}')
-
-# エラーハンドリング強化
-@app.errorhandler(404)
-def not_found_error(error):
-    return jsonify({'error': 'エンドポイントが見つかりません'}), 404
-
-@app.errorhandler(405)
-def method_not_allowed_error(error):
-    return jsonify({'error': '許可されていないHTTPメソッドです'}), 405
-
-@app.errorhandler(500)
-def internal_error(error):
-    logger.error(f'内部サーバーエラー: {str(error)}')
-    return jsonify({'error': '内部サーバーエラーが発生しました'}), 500
-
-# CORS設定の強化
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
-    return response
-
-# ログレベルの調整
-if __name__ != '__main__':
-    # プロダクション環境ではログレベルを INFO に設定
-    gunicorn_logger = logging.getLogger('gunicorn.error')
-    app.logger.handlers = gunicorn_logger.handlers
-    app.logger.setLevel(gunicorn_logger.level)
-
 app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ['true', '1', 'yes']
-    
-    logger.info(f'アプリケーション起動: ポート {port}, デバッグモード: {debug_mode}')
-    logger.info(f'環境変数確認 - COHERE_API_KEY: {"設定済み" if os.environ.get("COHERE_API_KEY") else "未設定"}')
-    logger.info(f'環境変数確認 - GEMINI_API_KEY: {"設定済み" if os.environ.get("GEMINI_API_KEY") else "未設定"}')
-    
-    app.run(host='0.0.0.0', port=port, debug=debug_mode)
+    app.run(host='0.0.0.0', port=port)

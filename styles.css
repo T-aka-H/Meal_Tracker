@@ -1,3 +1,4 @@
+/* 基本スタイル */
 * {
     margin: 0;
     padding: 0;
@@ -8,11 +9,20 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     line-height: 1.6;
     margin: 0;
-    padding: 0;
-    background-color: #f3f4f6;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: #1f2937;
     min-height: 100vh;
-    padding: 20px;
+}
+
+#app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .container {
@@ -24,6 +34,7 @@ body {
 /* ヘッダー */
 header {
     margin-bottom: 30px;
+    text-align: center;
 }
 
 h1 {
@@ -32,6 +43,24 @@ h1 {
     margin: 0 0 20px 0;
 }
 
+/* バージョンバッジ */
+.version-badge {
+    background: linear-gradient(45deg, #667eea, #764ba2);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    font-weight: 500;
+    margin-left: 10px;
+}
+
+.subtitle {
+    color: #666;
+    font-size: 1em;
+    margin-top: 5px;
+}
+
+/* ユーザーセクション */
 .user-section {
     display: flex;
     gap: 10px;
@@ -69,14 +98,235 @@ h1 {
     color: #dc2626;
 }
 
-/* メインコンテンツ */
+/* LLM選択セクション（新規追加） */
+.llm-selector-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #e1e5e9;
+}
+
+.llm-selector-section h4 {
+    color: #1e293b;
+    margin-bottom: 15px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 1.2em;
+}
+
+.llm-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.llm-option {
+    position: relative;
+}
+
+.llm-option input[type="radio"] {
+    display: none;
+}
+
+.llm-option label {
+    display: block;
+    padding: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.llm-option input[type="radio"]:checked + label {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+}
+
+.llm-brand {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.llm-description {
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.llm-option input[type="radio"]:checked + label .llm-brand,
+.llm-option input[type="radio"]:checked + label .llm-description {
+    color: white;
+    opacity: 1;
+}
+
+/* AI診断コントロールセクション（新規追加） */
+.ai-diagnosis-control-section {
+    background: #f0f8ff;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+    margin: 20px 0;
+}
+
+.ai-diagnosis-control-section h4 {
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.ai-diagnosis-control-section p {
+    color: #6b7280;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+/* AI診断結果コンテナ（新規追加） */
+.ai-diagnosis-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #10b981;
+    margin: 20px 0;
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+.ai-diagnosis-container h4 {
+    color: #1f2937;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.diagnosis-content {
+    background: #f9fafb;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.diagnosis-text {
+    line-height: 1.6;
+    color: #374151;
+}
+
+.highlight {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 1px 3px;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.diagnosis-footer {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* LLMプロバイダーステータス（新規追加） */
+.llm-provider-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 500;
+    margin-left: 10px;
+}
+
+.llm-provider-status.cohere {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.llm-provider-status.gemini {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* 新しいボタンスタイル（btn系）（新規追加） */
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ローディングスピナー（強化版） */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes slideInFromTop {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 既存のスタイル（変更なし） */
 main {
     display: flex;
     flex-direction: column;
     gap: 30px;
 }
 
-/* フォームセクション */
 .form-section {
     background-color: white;
     border-radius: 12px;
@@ -144,7 +394,6 @@ button[type="submit"]:hover {
     background-color: #1d4ed8;
 }
 
-/* 記録セクション */
 .records-section {
     background-color: white;
     border-radius: 12px;
@@ -180,7 +429,7 @@ button[type="submit"]:hover {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
-.modal h2 {
+.modal h2, .modal h3 {
     margin: 0 0 20px 0;
     color: #1f2937;
 }
@@ -190,6 +439,7 @@ button[type="submit"]:hover {
     gap: 10px;
     justify-content: flex-end;
     margin-top: 24px;
+    flex-wrap: wrap;
 }
 
 .modal button {
@@ -222,20 +472,30 @@ button[type="submit"]:hover {
     background-color: #b91c1c;
 }
 
-/* ローディングスピナー */
-.loading-spinner {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid currentColor;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
+/* プロンプト編集モーダル専用スタイル（新規追加） */
+#promptEditorModal .modal-content {
+    max-width: 800px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+#promptTemplateTextarea {
+    resize: vertical;
+    min-height: 300px;
+    font-family: monospace;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+#promptEditorStatus {
+    padding: 8px;
+    border-radius: 4px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    color: #059669;
+    font-size: 0.9em;
+    margin-top: 5px;
 }
 
 /* 通知 */
@@ -388,33 +648,6 @@ input:focus, select:focus, textarea:focus {
 textarea {
     resize: vertical;
     min-height: 60px;
-}
-
-.btn {
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.btn-primary {
-    background: #2563eb;
-    color: white;
-}
-
-.btn-primary:hover {
-    background: #1d4ed8;
-}
-
-.btn-secondary {
-    background: #f3f4f6;
-    color: #1f2937;
-}
-
-.btn-secondary:hover {
-    background: #e5e7eb;
 }
 
 .btn-danger {
@@ -651,23 +884,57 @@ textarea {
     margin: 20px 0;
 }
 
-.loading-spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-right: 8px;
+/* AI診断セクション（既存） */
+.ai-diagnosis-section {
+    margin-bottom: 30px;
+    display: flex;
+    gap: 20px;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.diagnosis-column {
+    flex: 1;
+    background-color: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-/* スマートフォン対応 */
+.diagnosis-column h3 {
+    margin: 0 0 16px 0;
+    color: #1f2937;
+    font-size: 1.2em;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.diagnosis-content {
+    white-space: pre-wrap;
+    line-height: 1.6;
+    color: #374151;
+    min-height: 120px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 6px;
+    border-left: 4px solid #3b82f6;
+    font-size: 0.95em;
+}
+
+.diagnosis-loading {
+    text-align: center;
+    padding: 20px;
+    color: #6b7280;
+}
+
+.diagnosis-error {
+    color: #dc2626;
+    padding: 12px;
+    background-color: #fee2e2;
+    border-radius: 6px;
+    margin-top: 8px;
+    border-left-color: #dc2626;
+}
+
+/* レスポンシブ対応 */
 @media (max-width: 768px) {
     body {
         padding: 5px;
@@ -681,6 +948,13 @@ textarea {
     h1 {
         font-size: 1.5em;
         margin-bottom: 15px;
+    }
+    
+    .version-badge {
+        display: block;
+        margin: 10px auto 0;
+        text-align: center;
+        max-width: 120px;
     }
     
     .form-row {
@@ -724,6 +998,25 @@ textarea {
         width: 95%;
         padding: 20px;
     }
+    
+    .modal-actions {
+        flex-direction: column;
+    }
+    
+    /* LLM選択のレスポンシブ対応 */
+    .llm-options {
+        grid-template-columns: 1fr;
+    }
+    
+    .ai-diagnosis-section {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .diagnosis-content {
+        min-height: 100px;
+        padding: 12px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -735,47 +1028,436 @@ textarea {
     .btn-edit, .btn-danger {
         margin: 2px 0;
     }
+}px solid #e2e8f0;
+}
+
+#userSection h2 {
+    color: #1e293b;
+    margin-bottom: 15px;
+}
+
+.user-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.user-controls select {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    background: white;
+    font-size: 16px;
+}
+
+/* 現在のユーザー表示 */
+#currentUserDisplay {
+    background: #ecfdf5;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border-left: 4px solid #10b981;
+}
+
+#currentUserDisplay h3 {
+    color: #065f46;
+    margin-bottom: 15px;
+}
+
+.user-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 /* AI診断セクション */
 .ai-diagnosis-section {
-    margin-bottom: 30px;
-    display: flex;
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #e2e8f0;
+}
+
+.ai-diagnosis-section h2 {
+    color: #1e293b;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.diagnosis-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 20px;
 }
 
 .diagnosis-column {
-    flex: 1;
-    background-color: white;
-    border-radius: 12px;
-    padding: 24px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .diagnosis-column h3 {
-    margin: 0 0 16px 0;
     color: #1f2937;
-    font-size: 1.2em;
-    padding-bottom: 8px;
+    margin-bottom: 10px;
+    font-size: 1.1em;
     border-bottom: 2px solid #e5e7eb;
+    padding-bottom: 8px;
 }
 
 .diagnosis-content {
-    white-space: pre-wrap;
+    min-height: 120px;
+    padding: 15px;
+    background: #f9fafb;
+    border-radius: 6px;
+    border-left: 4px solid #3b82f6;
     line-height: 1.6;
     color: #374151;
-}
-
-.diagnosis-loading {
-    text-align: center;
-    padding: 20px;
-    color: #6b7280;
+    font-size: 0.95em;
+    white-space: pre-wrap;
 }
 
 .diagnosis-error {
     color: #dc2626;
+    font-weight: 500;
+    background: #fef2f2;
+    border-left-color: #dc2626;
+}
+
+/* AI診断結果コンテナ */
+.ai-diagnosis-container {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #10b981;
+    margin: 20px 0;
+    animation: slideInFromTop 0.5s ease-out;
+}
+
+.ai-diagnosis-container h4 {
+    color: #1f2937;
+    margin-bottom: 15px;
+    font-size: 1.2em;
+}
+
+.diagnosis-text {
+    line-height: 1.6;
+    color: #374151;
+}
+
+.highlight {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 1px 3px;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.diagnosis-footer {
+    text-align: center;
+    color: #9ca3af;
+    font-style: italic;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #e5e7eb;
+}
+
+/* LLM選択セクション */
+.llm-selector-section {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 15px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 2px solid #e1e5e9;
+}
+
+.llm-options {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.llm-option input[type="radio"] {
+    display: none;
+}
+
+.llm-option label {
+    display: block;
+    padding: 15px;
+    border: 2px solid #e1e5e9;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.llm-option input[type="radio"]:checked + label {
+    border-color: #3b82f6;
+    background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+}
+
+.llm-brand {
+    font-size: 1.2em;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.llm-description {
+    font-size: 0.8em;
+    opacity: 0.8;
+}
+
+.llm-option input[type="radio"]:checked + label .llm-brand,
+.llm-option input[type="radio"]:checked + label .llm-description {
+    color: white;
+    opacity: 1;
+}
+
+.llm-provider-status {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 500;
+    margin-left: 10px;
+}
+
+.llm-provider-status.cohere {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.llm-provider-status.gemini {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* AI診断コントロール */
+.ai-diagnosis-control-section {
+    background: #f0f8ff;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3b82f6;
+    margin: 20px 0;
+}
+
+.ai-diagnosis-control-section h4 {
+    color: #1f2937;
+    margin-bottom: 10px;
+}
+
+.ai-diagnosis-control-section p {
+    color: #6b7280;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+/* フォームセクション */
+.form-section {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.form-section h2 {
+    color: #1f2937;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #374151;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
     padding: 12px;
-    background-color: #fee2e2;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+    font-family: inherit;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* ボタンスタイル */
+button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
     border-radius: 6px;
-    margin-top: 8px;
-} 
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.add-button,
+.confirm-button {
+    background: #10b981;
+    color: white;
+}
+
+.add-button:hover,
+.confirm-button:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.delete-button,
+.clear-button {
+    background: #ef4444;
+    color: white;
+}
+
+.delete-button:hover,
+.clear-button:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.refresh-button,
+.download-button,
+.cancel-button {
+    background: #6b7280;
+    color: white;
+}
+
+.refresh-button:hover,
+.download-button:hover,
+.cancel-button:hover {
+    background: #4b5563;
+    transform: translateY(-1px);
+}
+
+button[type="submit"] {
+    background: linear-gradient(45deg, #3b82f6, #1d4ed8);
+    color: white;
+    width: 100%;
+    font-size: 18px;
+    padding: 15px;
+}
+
+button[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* ローディングスピナー */
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-left: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* 記録セクション */
+.records-section {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.records-section h2 {
+    color: #1f2937;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.record-item {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.record-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1

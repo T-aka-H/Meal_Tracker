@@ -1,549 +1,4 @@
-// 食事記録アプリ - 完全版（COHERE AI診断機能付き + プロンプト編集機能）
-console.log('app.js読み込み開始');
-
-// Supabase設定
-const SUPABASE_URL = 'https://nhnanyzkcxlysugllpde.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwMTA5NzMsImV4cCI6MjA2NDU4Njk3M30.Ccc7gETnFohBMROiMF8VDiAqPicrkI_ZEaNDQITwj30';
-
-// グローバル変数
-let supabaseClient = null; // 変数名を変更
-let currentUser = null;
-let currentUserId = null;
-let editingId = null;
-let allUsers = [];
-let customPromptTemplate = null; // カスタムプロンプト保存用
-
-// COHERE AI食事診断機能（バックエンドAPI経由）
-
-// AI食事診断の実行
-async function getAIFoodDiagnosis() {
-    try {
-        // 診断中の表示
-        document.getElementById('diagnosisJa').textContent = '診断中...';
-        document.getElementById('diagnosisEn').textContent = 'Analyzing...';
-
-        // 最新の食事記録を取得（過去1週間）
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        
-        const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error('食事記録の取得に失敗しました');
-        }
-
-        const mealRecords = await response.json();
-
-        if (!mealRecords || mealRecords.length === 0) {
-            document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
-            document.getElementById('diagnosisEn').textContent = 'No meal records found. Please record some meals before requesting a diagnosis.';
-            return;
-        }
-
-        // AI診断を取得
-        const diagnosis = await getAIDiagnosisFromBackend(mealRecords);
-
-        // 診断結果の表示
-        document.getElementById('diagnosisJa').textContent = diagnosis.diagnosisJa;
-        document.getElementById('diagnosisEn').textContent = diagnosis.diagnosisEn;
-    } catch (error) {
-        console.error(' AI食事診断エラー:', error);
-        document.getElementById('diagnosisJa').innerHTML = `<div class="diagnosis-error">エラー: ${error.message}</div>`;
-        document.getElementById('diagnosisEn').innerHTML = `<div class="diagnosis-error">Error: ${error.message}</div>`;
-    }
-}
-
-// バックエンドAPIを使用して食事診断を取得
-async function getAIDiagnosisFromBackend(mealRecords) {
-    try {
-        // カスタムプロンプトを取得
-        let customPromptJa = localStorage.getItem('customPromptJa');
-        let customPromptEn = localStorage.getItem('customPromptEn');
-
-        console.log('AI診断リクエスト:', { 
-            meal_records: mealRecords,
-            custom_prompt_ja: customPromptJa,
-            custom_prompt_en: customPromptEn
-        });  // デバッグ用
-
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ 
-                meal_records: mealRecords,
-                custom_prompt_ja: customPromptJa,
-                custom_prompt_en: customPromptEn
-            })
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`APIエラー: ${response.status} \nレスポンス: ${errorText}`);
-        }
-
-        const data = await response.json();
-        if (!data.success) {
-            throw new Error(data.error || 'AI診断に失敗しました');
-        }
-
-        return {
-            diagnosisJa: data.diagnosis_ja,
-            diagnosisEn: data.diagnosis_en
-        };
-    } catch (error) {
-        console.error(' バックエンドAPI呼び出しエラー:', error);
-        throw new Error(`AI診断サービスへの接続に失敗しました: ${error.message}`);
-    }
-}
-
-// プロンプト編集機能
-
-// 1. プロンプト編集モーダルを表示
-async function showPromptEditorModal() {
-    const modal = document.getElementById('promptEditorModal');
-    const textarea = document.getElementById('promptTemplateTextarea');
-    const statusDiv = document.getElementById('promptEditorStatus');
-    
-    if (!modal || !textarea) return;
-    
-    // デフォルトプロンプトを取得
-    try {
-        statusDiv.textContent = 'プロンプトテンプレートを読み込み中...';
-        
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
-        if (response.ok) {
-            const data = await response.json();
-            textarea.value = customPromptTemplate || data.default_template;
-            statusDiv.textContent = '準備完了';
-        } else {
-            throw new Error('プロンプトテンプレートの取得に失敗しました');
-        }
-    } catch (error) {
-        console.error('プロンプト取得エラー:', error);
-        statusDiv.textContent = 'エラー: ' + error.message;
-    }
-    
-    modal.style.display = 'block';
-}
-
-// 2. プロンプトを保存
-async function savePromptTemplate() {
-    const textarea = document.getElementById('promptTemplateTextarea');
-    const statusDiv = document.getElementById('promptEditorStatus');
-    
-    if (!textarea) return;
-    
-    const promptTemplate = textarea.value.trim();
-    
-    if (!promptTemplate) {
-        statusDiv.textContent = 'エラー: プロンプトが空です';
-        return;
-    }
-    
-    if (!promptTemplate.includes('{meal_summary}')) {
-        statusDiv.textContent = 'エラー: プロンプトには {meal_summary} を含める必要があります';
-        return;
-    }
-    
-    try {
-        statusDiv.textContent = '保存中...';
-        
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                prompt_template: promptTemplate
-            })
-        });
-        
-        if (response.ok) {
-            customPromptTemplate = promptTemplate;
-            // ローカルストレージにも保存
-            localStorage.setItem('customPromptJa', promptTemplate);
-            
-            statusDiv.textContent = '保存完了！';
-            showNotification('カスタムプロンプトを保存しました', 'success');
-            
-            setTimeout(() => {
-                closeModal('promptEditorModal');
-            }, 1500);
-        } else {
-            const errorData = await response.json();
-            throw new Error(errorData.error || '保存に失敗しました');
-        }
-    } catch (error) {
-        console.error('プロンプト保存エラー:', error);
-        statusDiv.textContent = 'エラー: ' + error.message;
-        showNotification('プロンプトの保存に失敗しました', 'error');
-    }
-}
-
-// 3. プロンプトをデフォルトに戻す
-async function resetPromptTemplate() {
-    const textarea = document.getElementById('promptTemplateTextarea');
-    const statusDiv = document.getElementById('promptEditorStatus');
-    
-    if (!textarea) return;
-    
-    try {
-        statusDiv.textContent = 'デフォルトプロンプトを読み込み中...';
-        
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
-        if (response.ok) {
-            const data = await response.json();
-            textarea.value = data.default_template;
-            customPromptTemplate = null;
-            // ローカルストレージからも削除
-            localStorage.removeItem('customPromptJa');
-            
-            statusDiv.textContent = 'デフォルトプロンプトに戻しました';
-            showNotification('デフォルトプロンプトに戻しました', 'success');
-        } else {
-            throw new Error('デフォルトプロンプトの取得に失敗しました');
-        }
-    } catch (error) {
-        console.error('プロンプトリセットエラー:', error);
-        statusDiv.textContent = 'エラー: ' + error.message;
-    }
-}
-
-// 4. COHERE接続テスト
-async function testCohereConnection() {
-    const testBtn = document.getElementById('testCohereBtn');
-    const statusDiv = document.getElementById('cohereTestStatus');
-    
-    if (testBtn) testBtn.disabled = true;
-    if (statusDiv) statusDiv.textContent = 'COHERE API接続テスト中...';
-    
-    try {
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-cohere', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            statusDiv.textContent = '✅ COHERE API接続成功: ' + data.test_response;
-            showNotification('COHERE API接続テスト成功', 'success');
-        } else {
-            statusDiv.textContent = '❌ 接続失敗: ' + data.error;
-            showNotification('COHERE API接続テスト失敗', 'error');
-        }
-    } catch (error) {
-        console.error('COHERE接続テストエラー:', error);
-        statusDiv.textContent = '❌ テストエラー: ' + error.message;
-        showNotification('接続テストでエラーが発生しました', 'error');
-    } finally {
-        if (testBtn) testBtn.disabled = false;
-    }
-}
-
-// AI診断結果の表示
-function showAIDiagnosisResult(diagnosis) {
-    const resultContainer = document.getElementById('aiDiagnosisResult');
-    if (!resultContainer) {
-        console.error('AI診断結果表示エリアが見つかりません');
-        return;
-    }
-
-    // 診断結果をHTMLに整形
-    const formattedDiagnosis = formatDiagnosisForDisplay(diagnosis);
-    
-    const promptStatus = customPromptTemplate ? 
-        '<span style="color: #059669;">📝 カスタムプロンプト使用</span>' : 
-        '<span style="color: #6b7280;">📄 デフォルトプロンプト使用</span>';
-    
-    resultContainer.innerHTML = `
-        <div class="ai-diagnosis-container">
-            <h4>🤖 AI食事診断結果</h4>
-            <div style="text-align: right; font-size: 0.8em; margin-bottom: 10px;">
-                ${promptStatus}
-            </div>
-            <div class="diagnosis-content">
-                ${formattedDiagnosis}
-            </div>
-            <div class="diagnosis-footer">
-                <small>※ この診断は参考情報です。詳細な栄養指導については専門家にご相談ください。</small>
-            </div>
-        </div>
-    `;
-
-    // 結果エリアにスクロール
-    resultContainer.scrollIntoView({ behavior: 'smooth' });
-}
-
-// 診断結果をHTML表示用にフォーマット
-function formatDiagnosisForDisplay(diagnosis) {
-    // 改行を<br>タグに変換
-    let formatted = diagnosis.replace(/\n/g, '<br>');
-    
-    // 番号付きリストを検出してスタイリング
-    formatted = formatted.replace(/(\d+\.\s)/g, '<strong>$1</strong>');
-    
-    // 重要なキーワードを強調
-    const keywords = ['栄養バランス', 'カロリー', 'タンパク質', '炭水化物', 'ビタミン', 'ミネラル', '改善', '推奨', 'アドバイス'];
-    keywords.forEach(keyword => {
-        const regex = new RegExp(`(${keyword})`, 'gi');
-        formatted = formatted.replace(regex, '<span class="highlight">$1</span>');
-    });
-    
-    return `<div class="diagnosis-text">${formatted}</div>`;
-}
-
-// HTML要素の追加（修正版 - ユーザー設定の下に配置）
-function addAIDiagnosisElements() {
-    // 既にAI診断セクションが存在する場合は追加しない
-    if (document.getElementById('aiDiagnosisBtn')) {
-        return;
-    }
-
-    // currentUserDisplayの直後に追加する
-    const currentUserDisplay = document.getElementById('currentUserDisplay');
-    if (!currentUserDisplay) {
-        console.error('currentUserDisplay要素が見つかりません');
-        return;
-    }
-
-    const aiDiagnosisSection = document.createElement('div');
-    aiDiagnosisSection.innerHTML = `
-        <div class="ai-diagnosis-control-section" style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
-            <h4 style="color: #1f2937; margin-bottom: 10px;">🤖 AI食事診断</h4>
-            <p style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
-                過去1週間の食事記録を基に、AIが栄養バランスとアドバイスを提供します
-            </p>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
-                    🔍 AI診断を実行
-                    <span id="aiDiagnosisLoading" style="display: none;" class="loading-spinner"></span>
-                </button>
-                <button onclick="showPromptEditorModal()" class="btn btn-secondary">
-                    ✏️ プロンプト編集
-                </button>
-                <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
-                    🔗 接続テスト
-                </button>
-            </div>
-            <div id="cohereTestStatus" style="margin-top: 10px; font-size: 0.9em; color: #6b7280;"></div>
-        </div>
-    `;
-
-    // currentUserDisplayの直後に挿入
-    currentUserDisplay.insertAdjacentElement('afterend', aiDiagnosisSection);
-
-    // AI診断結果表示エリアも記録一覧の前に追加
-    const mainContent = document.getElementById('mainContent');
-    if (mainContent) {
-        const resultArea = document.createElement('div');
-        resultArea.id = 'aiDiagnosisResult';
-        resultArea.style.marginTop = '20px';
-        
-        // form-sectionの前に挿入
-        const formSection = mainContent.querySelector('.form-section');
-        if (formSection) {
-            mainContent.insertBefore(resultArea, formSection);
-        }
-    }
-}
-
-// プロンプト編集機能をページ下部に追加
-function addPromptEditorSection() {
-    const body = document.body;
-    if (!document.getElementById('promptEditorModal')) {
-        const promptEditorHTML = `
-            <!-- プロンプト編集モーダル -->
-            <div id="promptEditorModal" class="modal">
-                <div class="modal-content" style="max-width: 800px; width: 95%;">
-                    <h3>🎯 AI診断プロンプト編集</h3>
-                    <div style="margin-bottom: 15px;">
-                        <p style="color: #6b7280; font-size: 0.9em;">
-                            AI診断で使用するプロンプトをカスタマイズできます。<br>
-                            <strong>{meal_summary}</strong> の部分に実際の食事記録が挿入されます。
-                        </p>
-                        <div id="promptEditorStatus" style="color: #059669; font-size: 0.9em; margin-top: 5px;">
-                            準備中...
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 20px;">
-                        <label for="promptTemplateTextarea" style="display: block; margin-bottom: 8px; font-weight: 500;">
-                            プロンプトテンプレート:
-                        </label>
-                        <textarea 
-                            id="promptTemplateTextarea" 
-                            rows="15" 
-                            style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-family: monospace; font-size: 14px; line-height: 1.4;"
-                            placeholder="プロンプトテンプレートを入力してください..."
-                        ></textarea>
-                    </div>
-                    <div class="modal-actions">
-                        <button onclick="savePromptTemplate()" class="btn btn-primary">
-                            💾 保存
-                        </button>
-                        <button onclick="resetPromptTemplate()" class="btn btn-secondary">
-                            🔄 デフォルトに戻す
-                        </button>
-                        <button onclick="closeModal('promptEditorModal')" class="btn btn-secondary">
-                            ❌ キャンセル
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        body.insertAdjacentHTML('beforeend', promptEditorHTML);
-    }
-}
-
-// CSS追加
-function addAIDiagnosisStyles() {
-    const style = document.createElement('style');
-    style.textContent = `
-        .ai-diagnosis-container {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-            border-left: 4px solid #10b981;
-        }
-        
-        .ai-diagnosis-container h4 {
-            color: #1f2937;
-            margin-bottom: 15px;
-            font-size: 1.2em;
-        }
-        
-        .diagnosis-content {
-            background: #f9fafb;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-        }
-        
-        .diagnosis-text {
-            line-height: 1.6;
-            color: #374151;
-        }
-        
-        .highlight {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 1px 3px;
-            border-radius: 3px;
-            font-weight: 500;
-        }
-        
-        .diagnosis-footer {
-            text-align: center;
-            color: #9ca3af;
-            font-style: italic;
-        }
-        
-        .loading-spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #3b82f6;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-left: 8px;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #2563eb;
-        }
-        
-        .btn-secondary {
-            background: #f3f4f6;
-            color: #374151;
-            border: 1px solid #d1d5db;
-        }
-        
-        .btn-secondary:hover {
-            background: #e5e7eb;
-        }
-        
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* プロンプト編集モーダル専用スタイル */
-        #promptEditorModal .modal-content {
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        #promptTemplateTextarea {
-            resize: vertical;
-            min-height: 300px;
-        }
-        
-        #promptEditorStatus {
-            padding: 8px;
-            border-radius: 4px;
-            background: #f0fdf4;
-            border: 1px solid #bbf7d0;
-        }
-        
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-        
-        @media (max-width: 768px) {
-            .modal-actions {
-                flex-direction: column;
-            }
-            
-            .btn {
-                justify-content: center;
-            }
-        }
-    `;
-    document.head.appendChild(style);
-}
+// 既存のコード（統計情報削除、Supabase初期化、ユーザー管理など）は変更なし
 
 // 統計情報の削除
 function forceRemoveStats() {
@@ -597,7 +52,6 @@ async function loadSupabaseClient() {
         script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
         script.onload = () => {
             console.log('Supabaseクライアントライブラリのロード完了');
-            // グローバルなsupabaseオブジェクトが利用可能になるまで待機
             const checkSupabase = setInterval(() => {
                 if (window.supabase) {
                     clearInterval(checkSupabase);
@@ -605,7 +59,6 @@ async function loadSupabaseClient() {
                 }
             }, 100);
             
-            // タイムアウト設定
             setTimeout(() => {
                 clearInterval(checkSupabase);
                 reject(new Error('Supabaseクライアントライブラリのロードがタイムアウトしました'));
@@ -619,7 +72,7 @@ async function loadSupabaseClient() {
     });
 }
 
-// Supabaseの初期化（修正版）
+// Supabaseの初期化
 async function initializeSupabase() {
     console.log('🔄 Supabase接続開始...');
     const statusDiv = document.getElementById('connectionStatus');
@@ -629,13 +82,11 @@ async function initializeSupabase() {
     }
 
     try {
-        // Supabaseライブラリの読み込みを確認
         if (typeof window.supabase === 'undefined') {
             console.log('Supabaseライブラリを動的読み込み中...');
             await loadSupabaseClient();
         }
 
-        // createClientが利用可能になるまで待機
         const waitForCreateClient = () => {
             return new Promise((resolve, reject) => {
                 const check = setInterval(() => {
@@ -654,11 +105,9 @@ async function initializeSupabase() {
 
         await waitForCreateClient();
         
-        // Supabaseクライアントを作成（グローバル変数に代入）
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabaseクライアント作成成功');
 
-        // 接続テスト（リトライ機能付き）
         let testSuccess = false;
         let retryCount = 0;
         const maxRetries = 3;
@@ -686,7 +135,6 @@ async function initializeSupabase() {
                 console.warn(`📊 接続テスト失敗 (試行 ${retryCount}/${maxRetries}):`, error.message);
                 
                 if (retryCount < maxRetries) {
-                    // 再試行前に少し待つ
                     await new Promise(resolve => setTimeout(resolve, 1000));
                 } else {
                     throw error;
@@ -708,6 +156,7 @@ async function initializeSupabase() {
         return false;
     }
 }
+
 // ユーザー一覧の読み込み
 async function loadUsers() {
     console.log('ユーザー読み込み開始');
@@ -724,11 +173,8 @@ async function loadUsers() {
         if (error) throw error;
 
         console.log('取得したユーザー:', users);
-
-        // ユーザー選択肢の更新
         updateUserOptions(users);
 
-        // 最初のユーザーを選択
         if (users && users.length > 0) {
             const firstUser = users[0];
             await switchUser(firstUser.id);
@@ -748,10 +194,8 @@ function updateUserOptions(users) {
     const userSelect = document.getElementById('userSelect');
     if (!userSelect) return;
 
-    // 既存のオプションをクリア
     userSelect.innerHTML = '';
 
-    // ユーザー選択肢を追加
     users.forEach(user => {
         const option = document.createElement('option');
         option.value = user.id;
@@ -759,7 +203,6 @@ function updateUserOptions(users) {
         userSelect.appendChild(option);
     });
 
-    // 新規ユーザー追加オプション
     const newUserOption = document.createElement('option');
     newUserOption.value = 'new';
     newUserOption.textContent = '+ 新規ユーザー';
@@ -800,7 +243,6 @@ async function switchUser(userId) {
         currentUser = users[0];
         currentUserId = currentUser.id;
         
-        // ユーザー表示を更新
         const userDisplay = document.getElementById('currentUserName');
         if (userDisplay) {
             userDisplay.textContent = currentUser.name;
@@ -813,7 +255,6 @@ async function switchUser(userId) {
 
         console.log('ユーザー切り替え完了:', currentUser);
         
-        // 食事記録を読み込む
         await loadMealRecords();
         
         showNotification(`${currentUser.name}さんに切り替えました`, 'success');
@@ -911,7 +352,6 @@ async function deleteUser() {
     if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
 
     try {
-        // まず、ユーザーの全ての記録を削除
         const recordsResponse = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
             method: 'DELETE',
             headers: {
@@ -925,7 +365,6 @@ async function deleteUser() {
             throw new Error(`記録の削除に失敗: HTTP ${recordsResponse.status}: ${errorText}`);
         }
 
-        // 次に、ユーザーを削除
         const userResponse = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${currentUserId}`, {
             method: 'DELETE',
             headers: {
@@ -942,7 +381,6 @@ async function deleteUser() {
         closeModal('deleteUserModal');
         showNotification('ユーザーを削除しました', 'success');
         
-        // ユーザー情報をリセット
         currentUser = null;
         currentUserId = null;
         const currentUserDisplay = document.getElementById('currentUserDisplay');
@@ -950,7 +388,6 @@ async function deleteUser() {
         if (currentUserDisplay) currentUserDisplay.style.display = 'none';
         if (mainContent) mainContent.style.display = 'none';
         
-        // ユーザーリストを更新
         await loadUsers();
         
         setTimeout(forceRemoveStats, 100);
@@ -1135,7 +572,6 @@ function showNotification(message, type = 'default') {
 function setupEventListeners() {
     console.log('イベントリスナー設定開始...');
     
-    // フォームのサブミットイベント
     const mealForm = document.getElementById('mealForm');
     if (mealForm) {
         mealForm.addEventListener('submit', function(e) {
@@ -1151,7 +587,6 @@ function setupEventListeners() {
         console.error('mealForm要素が見つかりません');
     }
 
-    // ユーザー選択
     const userSelect = document.getElementById('userSelect');
     if (userSelect) {
         userSelect.addEventListener('change', function(e) {
@@ -1164,7 +599,6 @@ function setupEventListeners() {
         console.error('userSelect要素が見つかりません');
     }
 
-    // ウィンドウクリックイベント（モーダル閉じる）
     window.onclick = function(event) {
         const modals = document.getElementsByClassName('modal');
         for (const modal of modals) {
@@ -1174,7 +608,6 @@ function setupEventListeners() {
         }
     };
 
-    // Enterキーでユーザー追加
     const newUserName = document.getElementById('newUserName');
     if (newUserName) {
         newUserName.addEventListener('keypress', function(e) {
@@ -1449,17 +882,13 @@ async function initialize() {
     console.log('アプリケーション初期化開始');
     
     try {
-        // カスタムプロンプトの初期化
         await loadCustomPrompt();
         
-        // 既存の初期化処理
         setDefaultDateTime();
         
-        // 統計情報の初期化
         forceRemoveStats();
         startStatsRemovalWatcher();
         
-        // その他の初期化処理
         setupEventListeners();
         const supabaseInitialized = await initializeSupabase();
         
@@ -1477,7 +906,6 @@ async function initialize() {
 // カスタムプロンプトの取得処理を更新
 async function loadCustomPrompt() {
     try {
-        // デフォルトプロンプトを取得
         const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (!response.ok) {
             throw new Error('プロンプトの取得に失敗しました');
@@ -1485,11 +913,9 @@ async function loadCustomPrompt() {
 
         const data = await response.json();
         if (data.success && data.default_template) {
-            // ローカルストレージにプロンプトが保存されていない場合のみデフォルトを設定
             if (!localStorage.getItem('customPromptJa')) {
                 localStorage.setItem('customPromptJa', data.default_template);
             }
-            // プロンプト編集フォームがある場合は更新
             const promptTextarea = document.getElementById('promptTemplate');
             if (promptTextarea && !promptTextarea.value) {
                 promptTextarea.value = localStorage.getItem('customPromptJa') || data.default_template;
@@ -1497,7 +923,6 @@ async function loadCustomPrompt() {
         }
     } catch (error) {
         console.error('プロンプト取得エラー:', error);
-        // エラーが発生しても初期化は続行
         console.warn('デフォルトプロンプトを使用します');
     }
 }
@@ -1507,10 +932,8 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM読み込み完了');
     initialize();
 
-    // プロンプト編集フォームの初期化
     const promptForm = document.getElementById('promptEditForm');
     if (promptForm) {
-        // ページ読み込み時にカスタムプロンプトを読み込む
         loadCustomPrompt();
 
         promptForm.addEventListener('submit', async function(e) {
@@ -1565,7 +988,6 @@ async function getAIAdvice() {
     }
 
     try {
-        // 最新の食事記録を取得
         const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
             {
@@ -1590,7 +1012,6 @@ async function getAIAdvice() {
             return;
         }
 
-        // 簡易的なアドバイス生成
         const advice = generateSimpleAdvice(mealRecords);
         showNotification(advice, 'info');
         
@@ -1607,7 +1028,6 @@ function generateSimpleAdvice(records) {
     
     let advice = '📊 食事パターン分析: ';
     
-    // 食事回数の分析
     const mealTypeCount = {};
     mealTypes.forEach(type => {
         mealTypeCount[type] = (mealTypeCount[type] || 0) + 1;
@@ -1616,7 +1036,6 @@ function generateSimpleAdvice(records) {
     const typeList = Object.entries(mealTypeCount).map(([type, count]) => `${type}${count}回`).join('、');
     advice += typeList;
     
-    // カロリー分析
     if (calories.length > 0) {
         const avgCalories = Math.round(calories.reduce((a, b) => a + b, 0) / calories.length);
         advice += ` | 平均カロリー: ${avgCalories}kcal`;
@@ -1633,4 +1052,698 @@ function generateSimpleAdvice(records) {
     return advice;
 }
 
-console.log('app.js読み込み完了');
+console.log('app.js読み込み完了');// 食事記録アプリ - 完全版（COHERE & GEMINI AI診断機能付き + LLM選択機能）
+console.log('app.js読み込み開始');
+
+// Supabase設定
+const SUPABASE_URL = 'https://nhnanyzkcxlysugllpde.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5obmFueXprY3hseXN1Z2xscGRlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkwMTA5NzMsImV4cCI6MjA2NDU4Njk3M30.Ccc7gETnFohBMROiMF8VDiAqPicrkI_ZEaNDQITwj30';
+
+// グローバル変数
+let supabaseClient = null;
+let currentUser = null;
+let currentUserId = null;
+let editingId = null;
+let allUsers = [];
+let customPromptTemplate = null;
+let selectedLLMProvider = 'cohere'; // デフォルトはCohere
+
+// LLM選択機能
+
+// 選択されたLLMプロバイダーを取得
+function getSelectedLLMProvider() {
+    const selectedRadio = document.querySelector('input[name="llmProvider"]:checked');
+    return selectedRadio ? selectedRadio.value : 'cohere';
+}
+
+// LLMプロバイダーを設定
+function setLLMProvider(provider) {
+    selectedLLMProvider = provider;
+    localStorage.setItem('selectedLLMProvider', provider);
+    console.log(`LLMプロバイダーを${provider}に設定しました`);
+}
+
+// 保存されたLLMプロバイダーを読み込み
+function loadSavedLLMProvider() {
+    const saved = localStorage.getItem('selectedLLMProvider');
+    if (saved) {
+        selectedLLMProvider = saved;
+        const radio = document.querySelector(`input[name="llmProvider"][value="${saved}"]`);
+        if (radio) {
+            radio.checked = true;
+        }
+    }
+}
+
+// AI食事診断の実行（LLM選択対応版）
+async function getAIFoodDiagnosis() {
+    try {
+        // 選択されたLLMプロバイダーを取得
+        const llmProvider = getSelectedLLMProvider();
+        console.log(`選択されたLLMプロバイダー: ${llmProvider}`);
+
+        // 診断中の表示
+        document.getElementById('diagnosisJa').textContent = `${llmProvider.toUpperCase()}で診断中...`;
+        document.getElementById('diagnosisEn').textContent = `Analyzing with ${llmProvider.toUpperCase()}...`;
+
+        // 最新の食事記録を取得（過去1週間）
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        const response = await fetch(
+            `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
+            {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Accept': 'application/json'
+                }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('食事記録の取得に失敗しました');
+        }
+
+        const mealRecords = await response.json();
+
+        if (!mealRecords || mealRecords.length === 0) {
+            document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
+            document.getElementById('diagnosisEn').textContent = 'No meal records found. Please record some meals before requesting a diagnosis.';
+            return;
+        }
+
+        // AI診断を取得（LLMプロバイダー指定）
+        const diagnosis = await getAIDiagnosisFromBackend(mealRecords, llmProvider);
+
+        // 診断結果の表示
+        document.getElementById('diagnosisJa').textContent = diagnosis.diagnosisJa;
+        document.getElementById('diagnosisEn').textContent = diagnosis.diagnosisEn;
+
+        // 使用されたLLMプロバイダーの表示を更新
+        updateLLMProviderStatus(diagnosis.llmProvider || llmProvider);
+
+    } catch (error) {
+        console.error('AI食事診断エラー:', error);
+        document.getElementById('diagnosisJa').innerHTML = `<div class="diagnosis-error">エラー: ${error.message}</div>`;
+        document.getElementById('diagnosisEn').innerHTML = `<div class="diagnosis-error">Error: ${error.message}</div>`;
+    }
+}
+
+// バックエンドAPIを使用して食事診断を取得（LLM選択対応版）
+async function getAIDiagnosisFromBackend(mealRecords, llmProvider) {
+    try {
+        // カスタムプロンプトを取得
+        let customPromptJa = localStorage.getItem('customPromptJa');
+        let customPromptEn = localStorage.getItem('customPromptEn');
+
+        console.log('AI診断リクエスト:', { 
+            meal_records: mealRecords,
+            llm_provider: llmProvider,
+            custom_prompt_ja: customPromptJa,
+            custom_prompt_en: customPromptEn
+        });
+
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+                meal_records: mealRecords,
+                llm_provider: llmProvider,  // 新規追加
+                custom_prompt_ja: customPromptJa,
+                custom_prompt_en: customPromptEn
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`APIエラー: ${response.status} \nレスポンス: ${errorText}`);
+        }
+
+        const data = await response.json();
+        if (!data.success) {
+            throw new Error(data.error || 'AI診断に失敗しました');
+        }
+
+        return {
+            diagnosisJa: data.diagnosis_ja,
+            diagnosisEn: data.diagnosis_en,
+            llmProvider: data.llm_provider
+        };
+    } catch (error) {
+        console.error('バックエンドAPI呼び出しエラー:', error);
+        throw new Error(`AI診断サービスへの接続に失敗しました: ${error.message}`);
+    }
+}
+
+// LLMプロバイダーステータスの更新
+function updateLLMProviderStatus(provider) {
+    const statusElements = document.querySelectorAll('.llm-provider-status');
+    statusElements.forEach(element => {
+        element.textContent = `診断に使用: ${provider.toUpperCase()}`;
+        element.className = `llm-provider-status ${provider}`;
+    });
+}
+
+// Cohere接続テスト
+async function testCohereConnection() {
+    const testBtn = document.getElementById('testCohereBtn');
+    const statusDiv = document.getElementById('cohereTestStatus');
+    
+    if (testBtn) testBtn.disabled = true;
+    if (statusDiv) statusDiv.textContent = 'COHERE API接続テスト中...';
+    
+    try {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-cohere', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusDiv.textContent = '✅ COHERE API接続成功: ' + data.test_response;
+            showNotification('COHERE API接続テスト成功', 'success');
+        } else {
+            statusDiv.textContent = '❌ 接続失敗: ' + data.error;
+            showNotification('COHERE API接続テスト失敗', 'error');
+        }
+    } catch (error) {
+        console.error('COHERE接続テストエラー:', error);
+        statusDiv.textContent = '❌ テストエラー: ' + error.message;
+        showNotification('接続テストでエラーが発生しました', 'error');
+    } finally {
+        if (testBtn) testBtn.disabled = false;
+    }
+}
+
+// Gemini接続テスト（新規追加）
+async function testGeminiConnection() {
+    const testBtn = document.getElementById('testGeminiBtn');
+    const statusDiv = document.getElementById('geminiTestStatus');
+    
+    if (testBtn) testBtn.disabled = true;
+    if (statusDiv) statusDiv.textContent = 'Gemini API接続テスト中...';
+    
+    try {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-gemini', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            statusDiv.textContent = '✅ Gemini API接続成功: ' + data.test_response;
+            showNotification('Gemini API接続テスト成功', 'success');
+        } else {
+            statusDiv.textContent = '❌ 接続失敗: ' + data.error;
+            showNotification('Gemini API接続テスト失敗', 'error');
+        }
+    } catch (error) {
+        console.error('Gemini接続テストエラー:', error);
+        statusDiv.textContent = '❌ テストエラー: ' + error.message;
+        showNotification('接続テストでエラーが発生しました', 'error');
+    } finally {
+        if (testBtn) testBtn.disabled = false;
+    }
+}
+
+// プロンプト編集機能
+
+// 1. プロンプト編集モーダルを表示
+async function showPromptEditorModal() {
+    const modal = document.getElementById('promptEditorModal');
+    const textarea = document.getElementById('promptTemplateTextarea');
+    const statusDiv = document.getElementById('promptEditorStatus');
+    
+    if (!modal || !textarea) return;
+    
+    // デフォルトプロンプトを取得
+    try {
+        statusDiv.textContent = 'プロンプトテンプレートを読み込み中...';
+        
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        if (response.ok) {
+            const data = await response.json();
+            textarea.value = customPromptTemplate || data.default_template;
+            statusDiv.textContent = '準備完了';
+        } else {
+            throw new Error('プロンプトテンプレートの取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('プロンプト取得エラー:', error);
+        statusDiv.textContent = 'エラー: ' + error.message;
+    }
+    
+    modal.style.display = 'block';
+}
+
+// 2. プロンプトを保存
+async function savePromptTemplate() {
+    const textarea = document.getElementById('promptTemplateTextarea');
+    const statusDiv = document.getElementById('promptEditorStatus');
+    
+    if (!textarea) return;
+    
+    const promptTemplate = textarea.value.trim();
+    
+    if (!promptTemplate) {
+        statusDiv.textContent = 'エラー: プロンプトが空です';
+        return;
+    }
+    
+    if (!promptTemplate.includes('{meal_summary}')) {
+        statusDiv.textContent = 'エラー: プロンプトには {meal_summary} を含める必要があります';
+        return;
+    }
+    
+    try {
+        statusDiv.textContent = '保存中...';
+        
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                prompt_template: promptTemplate
+            })
+        });
+        
+        if (response.ok) {
+            customPromptTemplate = promptTemplate;
+            // ローカルストレージにも保存
+            localStorage.setItem('customPromptJa', promptTemplate);
+            
+            statusDiv.textContent = '保存完了！';
+            showNotification('カスタムプロンプトを保存しました', 'success');
+            
+            setTimeout(() => {
+                closeModal('promptEditorModal');
+            }, 1500);
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || '保存に失敗しました');
+        }
+    } catch (error) {
+        console.error('プロンプト保存エラー:', error);
+        statusDiv.textContent = 'エラー: ' + error.message;
+        showNotification('プロンプトの保存に失敗しました', 'error');
+    }
+}
+
+// 3. プロンプトをデフォルトに戻す
+async function resetPromptTemplate() {
+    const textarea = document.getElementById('promptTemplateTextarea');
+    const statusDiv = document.getElementById('promptEditorStatus');
+    
+    if (!textarea) return;
+    
+    try {
+        statusDiv.textContent = 'デフォルトプロンプトを読み込み中...';
+        
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        if (response.ok) {
+            const data = await response.json();
+            textarea.value = data.default_template;
+            customPromptTemplate = null;
+            // ローカルストレージからも削除
+            localStorage.removeItem('customPromptJa');
+            
+            statusDiv.textContent = 'デフォルトプロンプトに戻しました';
+            showNotification('デフォルトプロンプトに戻しました', 'success');
+        } else {
+            throw new Error('デフォルトプロンプトの取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('プロンプトリセットエラー:', error);
+        statusDiv.textContent = 'エラー: ' + error.message;
+    }
+}
+
+// AI診断結果の表示
+function showAIDiagnosisResult(diagnosis) {
+    const resultContainer = document.getElementById('aiDiagnosisResult');
+    if (!resultContainer) {
+        console.error('AI診断結果表示エリアが見つかりません');
+        return;
+    }
+
+    // 診断結果をHTMLに整形
+    const formattedDiagnosis = formatDiagnosisForDisplay(diagnosis);
+    
+    const promptStatus = customPromptTemplate ? 
+        '<span style="color: #059669;">📝 カスタムプロンプト使用</span>' : 
+        '<span style="color: #6b7280;">📄 デフォルトプロンプト使用</span>';
+    
+    resultContainer.innerHTML = `
+        <div class="ai-diagnosis-container">
+            <h4>🤖 AI食事診断結果</h4>
+            <div style="text-align: right; font-size: 0.8em; margin-bottom: 10px;">
+                ${promptStatus}
+                <span class="llm-provider-status">${selectedLLMProvider.toUpperCase()}</span>
+            </div>
+            <div class="diagnosis-content">
+                ${formattedDiagnosis}
+            </div>
+            <div class="diagnosis-footer">
+                <small>※ この診断は参考情報です。詳細な栄養指導については専門家にご相談ください。</small>
+            </div>
+        </div>
+    `;
+
+    // 結果エリアにスクロール
+    resultContainer.scrollIntoView({ behavior: 'smooth' });
+}
+
+// 診断結果をHTML表示用にフォーマット
+function formatDiagnosisForDisplay(diagnosis) {
+    // 改行を<br>タグに変換
+    let formatted = diagnosis.replace(/\n/g, '<br>');
+    
+    // 番号付きリストを検出してスタイリング
+    formatted = formatted.replace(/(\d+\.\s)/g, '<strong>$1</strong>');
+    
+    // 重要なキーワードを強調
+    const keywords = ['栄養バランス', 'カロリー', 'タンパク質', '炭水化物', 'ビタミン', 'ミネラル', '改善', '推奨', 'アドバイス'];
+    keywords.forEach(keyword => {
+        const regex = new RegExp(`(${keyword})`, 'gi');
+        formatted = formatted.replace(regex, '<span class="highlight">$1</span>');
+    });
+    
+    return `<div class="diagnosis-text">${formatted}</div>`;
+}
+
+// HTML要素の追加（修正版 - LLM選択UI含む）
+function addAIDiagnosisElements() {
+    // 既にAI診断セクションが存在する場合は追加しない
+    if (document.getElementById('aiDiagnosisBtn')) {
+        return;
+    }
+
+    // currentUserDisplayの直後に追加する
+    const currentUserDisplay = document.getElementById('currentUserDisplay');
+    if (!currentUserDisplay) {
+        console.error('currentUserDisplay要素が見つかりません');
+        return;
+    }
+
+    const aiDiagnosisSection = document.createElement('div');
+    aiDiagnosisSection.innerHTML = `
+        <!-- LLM選択セクション -->
+        <div class="llm-selector-section" style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 15px; border: 2px solid #e1e5e9;">
+            <h4 style="color: #1e293b; margin-bottom: 15px; text-align: center; font-weight: 600;">🤖 AI診断エンジン選択</h4>
+            <div class="llm-options" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                <div class="llm-option">
+                    <input type="radio" id="cohereRadio" name="llmProvider" value="cohere" checked onchange="setLLMProvider('cohere')">
+                    <label for="cohereRadio" style="display: block; padding: 15px; border: 2px solid #e1e5e9; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; background: white; text-align: center;">
+                        <div class="llm-brand" style="font-size: 1.2em; font-weight: 700; margin-bottom: 8px; color: #3b82f6;">Cohere</div>
+                        <div class="llm-description" style="font-size: 0.8em; opacity: 0.8;">高精度な自然言語処理</div>
+                    </label>
+                </div>
+                <div class="llm-option">
+                    <input type="radio" id="geminiRadio" name="llmProvider" value="gemini" onchange="setLLMProvider('gemini')">
+                    <label for="geminiRadio" style="display: block; padding: 15px; border: 2px solid #e1e5e9; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; background: white; text-align: center;">
+                        <div class="llm-brand" style="font-size: 1.2em; font-weight: 700; margin-bottom: 8px; color: #059669;">Gemini</div>
+                        <div class="llm-description" style="font-size: 0.8em; opacity: 0.8;">Google の最新AI技術</div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI診断コントロール -->
+        <div class="ai-diagnosis-control-section" style="margin-top: 20px; padding: 15px; background: #f0f8ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+            <h4 style="color: #1f2937; margin-bottom: 10px;">🍽️ AI食事診断</h4>
+            <p style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
+                過去1週間の食事記録を基に、選択したAIが栄養バランスとアドバイスを提供します
+            </p>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+                <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
+                    🔍 AI診断を実行
+                    <span id="aiDiagnosisLoading" style="display: none;" class="loading-spinner"></span>
+                </button>
+                <button onclick="showPromptEditorModal()" class="btn btn-secondary">
+                    ✏️ プロンプト編集
+                </button>
+                <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
+                    🔗 Cohereテスト
+                </button>
+                <button id="testGeminiBtn" onclick="testGeminiConnection()" class="btn btn-secondary">
+                    🔗 Geminiテスト
+                </button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                <div id="cohereTestStatus" style="color: #6b7280;"></div>
+                <div id="geminiTestStatus" style="color: #6b7280;"></div>
+            </div>
+        </div>
+    `;
+
+    // currentUserDisplayの直後に挿入
+    currentUserDisplay.insertAdjacentElement('afterend', aiDiagnosisSection);
+
+    // AI診断結果表示エリアも記録一覧の前に追加
+    const mainContent = document.getElementById('mainContent');
+    if (mainContent) {
+        const resultArea = document.createElement('div');
+        resultArea.id = 'aiDiagnosisResult';
+        resultArea.style.marginTop = '20px';
+        
+        // form-sectionの前に挿入
+        const formSection = mainContent.querySelector('.form-section');
+        if (formSection) {
+            mainContent.insertBefore(resultArea, formSection);
+        }
+    }
+
+    // 保存されたLLMプロバイダーを読み込み
+    loadSavedLLMProvider();
+}
+
+// プロンプト編集機能をページ下部に追加
+function addPromptEditorSection() {
+    const body = document.body;
+    if (!document.getElementById('promptEditorModal')) {
+        const promptEditorHTML = `
+            <!-- プロンプト編集モーダル -->
+            <div id="promptEditorModal" class="modal">
+                <div class="modal-content" style="max-width: 800px; width: 95%;">
+                    <h3>🎯 AI診断プロンプト編集</h3>
+                    <div style="margin-bottom: 15px;">
+                        <p style="color: #6b7280; font-size: 0.9em;">
+                            AI診断で使用するプロンプトをカスタマイズできます。<br>
+                            <strong>{meal_summary}</strong> の部分に実際の食事記録が挿入されます。
+                        </p>
+                        <div id="promptEditorStatus" style="color: #059669; font-size: 0.9em; margin-top: 5px;">
+                            準備中...
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label for="promptTemplateTextarea" style="display: block; margin-bottom: 8px; font-weight: 500;">
+                            プロンプトテンプレート:
+                        </label>
+                        <textarea 
+                            id="promptTemplateTextarea" 
+                            rows="15" 
+                            style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-family: monospace; font-size: 14px; line-height: 1.4;"
+                            placeholder="プロンプトテンプレートを入力してください..."
+                        ></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button onclick="savePromptTemplate()" class="btn btn-primary">
+                            💾 保存
+                        </button>
+                        <button onclick="resetPromptTemplate()" class="btn btn-secondary">
+                            🔄 デフォルトに戻す
+                        </button>
+                        <button onclick="closeModal('promptEditorModal')" class="btn btn-secondary">
+                            ❌ キャンセル
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        body.insertAdjacentHTML('beforeend', promptEditorHTML);
+    }
+}
+
+// CSS追加（LLM選択用スタイル追加）
+function addAIDiagnosisStyles() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .ai-diagnosis-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-left: 4px solid #10b981;
+        }
+        
+        .ai-diagnosis-container h4 {
+            color: #1f2937;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .diagnosis-content {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .diagnosis-text {
+            line-height: 1.6;
+            color: #374151;
+        }
+        
+        .highlight {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+        
+        .diagnosis-footer {
+            text-align: center;
+            color: #9ca3af;
+            font-style: italic;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        /* LLM選択関連のスタイル */
+        .llm-option input[type="radio"]:checked + label {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .llm-option input[type="radio"]:checked + label .llm-brand,
+        .llm-option input[type="radio"]:checked + label .llm-description {
+            color: white;
+            opacity: 1;
+        }
+        
+        .llm-provider-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+        
+        .llm-provider-status.cohere {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .llm-provider-status.gemini {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* プロンプト編集モーダル専用スタイル */
+        #promptEditorModal .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        #promptTemplateTextarea {
+            resize: vertical;
+            min-height: 300px;
+        }
+        
+        #promptEditorStatus {
+            padding: 8px;
+            border-radius: 4px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 768px) {
+            .modal-actions {
+                flex-direction: column;
+            }
+            
+            .btn {
+                justify-content: center;
+            }
+            
+            .llm-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
