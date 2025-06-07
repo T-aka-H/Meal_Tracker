@@ -187,8 +187,11 @@ Please provide friendly and practical advice. Explain technical terms in an easy
         try:
             test_prompt = "こんにちは。これはAPIテストです。短く返答してください。"
             
+            # 最新のGemini APIエンドポイントを使用
+            url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={app.config["GEMINI_API_KEY"]}'
+            
             response = requests.post(
-                f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={app.config["GEMINI_API_KEY"]}',
+                url,
                 headers={
                     'Content-Type': 'application/json'
                 },
@@ -206,6 +209,9 @@ Please provide friendly and practical advice. Explain technical terms in an easy
                 timeout=10
             )
             
+            logger.debug(f'Gemini テストレスポンス: {response.status_code}')
+            logger.debug(f'Gemini テストURL: {url}')
+            
             if response.status_code == 200:
                 data = response.json()
                 test_response = data['candidates'][0]['content']['parts'][0]['text'].strip()
@@ -216,9 +222,10 @@ Please provide friendly and practical advice. Explain technical terms in an easy
                     'message': 'Gemini API接続成功'
                 })
             else:
+                logger.error(f'Gemini テストエラーレスポンス: {response.text}')
                 return jsonify({
                     'success': False,
-                    'error': f'APIエラー: {response.status_code}'
+                    'error': f'APIエラー: {response.status_code} - {response.text}'
                 }), response.status_code
                 
         except requests.exceptions.Timeout:
@@ -389,8 +396,11 @@ def get_gemini_diagnosis(prompt, api_key):
     logger.info('Gemini APIにリクエスト送信')
 
     try:
+        # 正しいGemini REST APIエンドポイント
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={api_key}'
+        
         gemini_response = requests.post(
-            f'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}',
+            url,
             headers={
                 'Content-Type': 'application/json'
             },
@@ -428,23 +438,30 @@ def get_gemini_diagnosis(prompt, api_key):
             timeout=60
         )
 
+        logger.debug(f'Gemini APIレスポンス: {gemini_response.status_code}')
+        logger.debug(f'Gemini URL: {url}')
+
         if gemini_response.status_code != 200:
             error_msg = f"Gemini API エラー: {gemini_response.status_code}"
             logger.error(f"{error_msg}: {gemini_response.text}")
             raise Exception(error_msg)
 
         gemini_data = gemini_response.json()
+        logger.debug(f'Gemini レスポンスデータ: {gemini_data}')
         
         if 'candidates' not in gemini_data or len(gemini_data['candidates']) == 0:
+            logger.error(f'Gemini APIレスポンス構造エラー: {gemini_data}')
             raise Exception('Gemini APIからの応答が予期された形式ではありません')
         
         candidate = gemini_data['candidates'][0]
         
         if 'finishReason' in candidate and candidate['finishReason'] != 'STOP':
+            logger.warning(f'Gemini API 生成停止理由: {candidate["finishReason"]}')
             if candidate['finishReason'] == 'SAFETY':
                 return "申し訳ございませんが、安全性の観点から診断結果を生成できませんでした。別の方法でお試しください。"
         
         if 'content' not in candidate or 'parts' not in candidate['content']:
+            logger.error(f'Gemini APIコンテンツ構造エラー: {candidate}')
             raise Exception('Gemini APIからの応答にコンテンツが含まれていません')
         
         text_content = candidate['content']['parts'][0]['text'].strip()
