@@ -219,7 +219,8 @@ async function switchUser(userId) {
     }
 
     try {
-        const response = await fetch(
+        async function fetchMealRecords() {
+    const response = await fetch(
             `${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`,
             {
                 method: 'GET',
@@ -311,7 +312,8 @@ async function addUser() {
     try {
         console.log('ユーザー追加開始:', name);
         
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        async function fetchMealRecords() {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -411,7 +413,8 @@ function deleteRecord(id) {
     if (confirmBtn) {
         confirmBtn.onclick = async () => {
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${id}`, {
+                async function fetchMealRecords() {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${id}`, {
                     method: 'DELETE',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -456,7 +459,8 @@ function clearUserData() {
     if (confirmBtn) {
         confirmBtn.onclick = async () => {
             try {
-                const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+                async function fetchMealRecords() {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
                     method: 'DELETE',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -491,7 +495,8 @@ async function downloadUserData() {
     }
     
     try {
-        const response = await fetch(
+        async function fetchMealRecords() {
+    const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
             {
                 method: 'GET',
@@ -658,7 +663,8 @@ async function addMealRecord() {
             user_id: currentUserId
         };
         
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records`, {
+        async function fetchMealRecords() {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -701,7 +707,8 @@ async function loadMealRecords() {
         const url = `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`;
         console.log('APIリクエストURL:', url);
 
-        const response = await fetch(url, {
+        async function fetchMealRecords() {
+    const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -792,7 +799,8 @@ function createRecordElement(record) {
 // 記録の編集
 async function editRecord(id) {
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
+        async function fetchMealRecords() {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -842,7 +850,8 @@ async function updateMealRecord() {
     if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
     
     try {
-        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${editingId}`, {
+        async function fetchMealRecords() {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${editingId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -906,7 +915,8 @@ async function initialize() {
 // カスタムプロンプトの取得処理を更新
 async function loadCustomPrompt() {
     try {
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        async function fetchMealRecords() {
+    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (!response.ok) {
             throw new Error('プロンプトの取得に失敗しました');
         }
@@ -988,7 +998,8 @@ async function getAIAdvice() {
     }
 
     try {
-        const response = await fetch(
+        async function fetchMealRecords() {
+    const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
             {
                 method: 'GET',
@@ -1006,6 +1017,11 @@ async function getAIAdvice() {
         }
 
         const mealRecords = await response.json();
+    return mealRecords;
+}
+
+async function getAIFoodDiagnosis() {
+    const mealRecords = await fetchMealRecords();
 
         if (!mealRecords || mealRecords.length === 0) {
             showNotification('食事記録が見つかりません。まず食事を記録してください。', 'info');
@@ -1111,7 +1127,8 @@ async function getAIFoodDiagnosis() {
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
-        const response = await fetch(
+        async function fetchMealRecords() {
+    const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
             {
                 method: 'GET',
@@ -1128,6 +1145,11 @@ async function getAIFoodDiagnosis() {
         }
 
         const mealRecords = await response.json();
+    return mealRecords;
+}
+
+async function getAIFoodDiagnosis() {
+    const mealRecords = await fetchMealRecords();
 
         if (!mealRecords || mealRecords.length === 0) {
             document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
@@ -1168,7 +1190,8 @@ async function getAIFoodDiagnosis() {
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
-        const response = await fetch(
+        async function fetchMealRecords() {
+    const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
             {
                 method: 'GET',
@@ -1185,6 +1208,11 @@ async function getAIFoodDiagnosis() {
         }
 
         const mealRecords = await response.json();
+    return mealRecords;
+}
+
+async function getAIFoodDiagnosis() {
+    const mealRecords = await fetchMealRecords();
 
         if (!mealRecords || mealRecords.length === 0) {
             document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
@@ -1223,7 +1251,8 @@ async function getAIDiagnosisFromBackend(mealRecords, llmProvider) {
             custom_prompt_en: customPromptEn
         });
 
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
+        async function fetchMealRecords() {
+    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1275,7 +1304,8 @@ async function testCohereConnection() {
     if (statusDiv) statusDiv.textContent = 'COHERE API接続テスト中...';
     
     try {
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-cohere', {
+        async function fetchMealRecords() {
+    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-cohere', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1309,7 +1339,8 @@ async function testGeminiConnection() {
     if (statusDiv) statusDiv.textContent = 'Gemini API接続テスト中...';
     
     try {
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-gemini', {
+        async function fetchMealRecords() {
+    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-gemini', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1348,7 +1379,8 @@ async function showPromptEditorModal() {
     try {
         statusDiv.textContent = 'プロンプトテンプレートを読み込み中...';
         
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        async function fetchMealRecords() {
+    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (response.ok) {
             const data = await response.json();
             textarea.value = customPromptTemplate || data.default_template;
@@ -1386,7 +1418,8 @@ async function savePromptTemplate() {
     try {
         statusDiv.textContent = '保存中...';
         
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
+        async function fetchMealRecords() {
+    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1428,7 +1461,8 @@ async function resetPromptTemplate() {
     try {
         statusDiv.textContent = 'デフォルトプロンプトを読み込み中...';
         
-        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        async function fetchMealRecords() {
+    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (response.ok) {
             const data = await response.json();
             textarea.value = data.default_template;
