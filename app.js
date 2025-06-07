@@ -130,8 +130,7 @@ async function initializeSupabase() {
                     statusDiv.textContent = '✅ データベース接続完了';
                     statusDiv.className = 'status success';
                 }
-            } catch (error) {
-                retryCount++;
+    } catch (error) {                retryCount++;
                 console.warn(`📊 接続テスト失敗 (試行 ${retryCount}/${maxRetries}):`, error.message);
                 
                 if (retryCount < maxRetries) {
@@ -143,8 +142,7 @@ async function initializeSupabase() {
         }
 
         return true;
-    } catch (error) {
-        console.error('❌ Supabase接続エラー:', error);
+    } catch (error) {        console.error('❌ Supabase接続エラー:', error);
         
         if (statusDiv) {
             statusDiv.textContent = '❌ データベース接続失敗';
@@ -181,8 +179,7 @@ async function loadUsers() {
         }
 
         return true;
-    } catch (error) {
-        console.error('ユーザー読み込みエラー:', error);
+    } catch (error) {        console.error('ユーザー読み込みエラー:', error);
         showNotification('ユーザー情報の読み込みに失敗しました: ' + error.message, 'error');
         return false;
     }
@@ -219,8 +216,7 @@ async function switchUser(userId) {
     }
 
     try {
-        async function fetchMealRecords() {
-    const response = await fetch(
+        const response = await fetch(
             `${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`,
             {
                 method: 'GET',
@@ -267,8 +263,7 @@ async function switchUser(userId) {
             addAIDiagnosisStyles();
         }, 500);
         
-    } catch (error) {
-        console.error('ユーザー切り替えエラー:', error);
+    } catch (error) {        console.error('ユーザー切り替えエラー:', error);
         showNotification(error.message, 'error');
     }
 }
@@ -312,8 +307,7 @@ async function addUser() {
     try {
         console.log('ユーザー追加開始:', name);
         
-        async function fetchMealRecords() {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -337,8 +331,7 @@ async function addUser() {
         
         setTimeout(forceRemoveStats, 100);
         
-    } catch (error) {
-        console.error('ユーザー追加エラー:', error);
+    } catch (error) {        console.error('ユーザー追加エラー:', error);
         showNotification('ユーザーの追加に失敗しました', 'error');
     }
 }
@@ -394,8 +387,7 @@ async function deleteUser() {
         
         setTimeout(forceRemoveStats, 100);
         
-    } catch (error) {
-        console.error('ユーザー削除エラー:', error);
+    } catch (error) {        console.error('ユーザー削除エラー:', error);
         showNotification('ユーザーの削除に失敗しました', 'error');
     } finally {
         if (loadingSpinner) loadingSpinner.style.display = 'none';
@@ -413,8 +405,7 @@ function deleteRecord(id) {
     if (confirmBtn) {
         confirmBtn.onclick = async () => {
             try {
-                async function fetchMealRecords() {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${id}`, {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${id}`, {
                     method: 'DELETE',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -433,8 +424,7 @@ function deleteRecord(id) {
                 
                 setTimeout(forceRemoveStats, 100);
                 
-            } catch (error) {
-                console.error('記録削除エラー:', error);
+    } catch (error) {                console.error('記録削除エラー:', error);
                 showNotification('記録の削除に失敗しました', 'error');
             }
         };
@@ -459,8 +449,7 @@ function clearUserData() {
     if (confirmBtn) {
         confirmBtn.onclick = async () => {
             try {
-                async function fetchMealRecords() {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
+                const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?user_id=eq.${currentUserId}`, {
                     method: 'DELETE',
                     headers: {
                         'apikey': SUPABASE_ANON_KEY,
@@ -479,8 +468,7 @@ function clearUserData() {
                 
                 setTimeout(forceRemoveStats, 100);
                 
-            } catch (error) {
-                console.error('データ削除エラー:', error);
+    } catch (error) {                console.error('データ削除エラー:', error);
                 showNotification('データの削除に失敗しました', 'error');
             }
         };
@@ -495,8 +483,7 @@ async function downloadUserData() {
     }
     
     try {
-        async function fetchMealRecords() {
-    const response = await fetch(
+        const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`,
             {
                 method: 'GET',
@@ -519,8 +506,7 @@ async function downloadUserData() {
         downloadCSV(csvContent, `meal_records_${currentUser.name}.csv`);
         showNotification('データをダウンロードしました', 'success');
         
-    } catch (error) {
-        console.error('データダウンロードエラー:', error);
+    } catch (error) {        console.error('データダウンロードエラー:', error);
         showNotification('データのダウンロードに失敗しました', 'error');
     }
 }
@@ -663,8 +649,7 @@ async function addMealRecord() {
             user_id: currentUserId
         };
         
-        async function fetchMealRecords() {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -688,8 +673,7 @@ async function addMealRecord() {
         await loadMealRecords();
         setTimeout(forceRemoveStats, 100);
         
-    } catch (error) {
-        console.error('食事記録追加エラー:', error);
+    } catch (error) {        console.error('食事記録追加エラー:', error);
         showNotification('記録の追加に失敗しました: ' + error.message, 'error');
     } finally {
         if (loadingSpinner) {
@@ -707,8 +691,7 @@ async function loadMealRecords() {
         const url = `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc`;
         console.log('APIリクエストURL:', url);
 
-        async function fetchMealRecords() {
-    const response = await fetch(url, {
+        const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -730,8 +713,7 @@ async function loadMealRecords() {
         
         displayMealRecords(records);
         
-    } catch (error) {
-        console.error('記録読み込みエラー:', error);
+    } catch (error) {        console.error('記録読み込みエラー:', error);
         showNotification('記録の読み込みに失敗しました', 'error');
     }
 }
@@ -799,8 +781,7 @@ function createRecordElement(record) {
 // 記録の編集
 async function editRecord(id) {
     try {
-        async function fetchMealRecords() {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?select=*&id=eq.${id}`, {
             method: 'GET',
             headers: {
                 'apikey': SUPABASE_ANON_KEY,
@@ -835,8 +816,7 @@ async function editRecord(id) {
         if (submitBtn) submitBtn.textContent = '✏️ 記録を更新';
         window.scrollTo({ top: 0, behavior: 'smooth' });
         
-    } catch (error) {
-        console.error('記録編集エラー:', error);
+    } catch (error) {        console.error('記録編集エラー:', error);
         showNotification('記録の読み込みに失敗しました', 'error');
     }
 }
@@ -850,8 +830,7 @@ async function updateMealRecord() {
     if (loadingSpinner) loadingSpinner.style.display = 'inline-block';
     
     try {
-        async function fetchMealRecords() {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${editingId}`, {
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/meal_records?id=eq.${editingId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',
@@ -878,8 +857,7 @@ async function updateMealRecord() {
         
         setTimeout(forceRemoveStats, 100);
         
-    } catch (error) {
-        console.error('記録更新エラー:', error);
+    } catch (error) {        console.error('記録更新エラー:', error);
         showNotification('記録の更新に失敗しました', 'error');
     } finally {
         if (loadingSpinner) loadingSpinner.style.display = 'none';
@@ -906,8 +884,7 @@ async function initialize() {
         }
         
         console.log('アプリケーション初期化完了');
-    } catch (error) {
-        console.error('初期化エラー:', error);
+    } catch (error) {        console.error('初期化エラー:', error);
         showNotification('アプリケーションの初期化に失敗しました: ' + error.message, 'error');
     }
 }
@@ -915,8 +892,7 @@ async function initialize() {
 // カスタムプロンプトの取得処理を更新
 async function loadCustomPrompt() {
     try {
-        async function fetchMealRecords() {
-    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (!response.ok) {
             throw new Error('プロンプトの取得に失敗しました');
         }
@@ -931,8 +907,7 @@ async function loadCustomPrompt() {
                 promptTextarea.value = localStorage.getItem('customPromptJa') || data.default_template;
             }
         }
-    } catch (error) {
-        console.error('プロンプト取得エラー:', error);
+    } catch (error) {        console.error('プロンプト取得エラー:', error);
         console.warn('デフォルトプロンプトを使用します');
     }
 }
@@ -985,8 +960,7 @@ async function debugTest() {
             .insert([{ name: 'テストユーザー2024' }]);
         
         console.log('成功:', result);
-    } catch (error) {
-        console.error('エラー:', error);
+    } catch (error) {        console.error('エラー:', error);
     }
 }
 
@@ -998,8 +972,7 @@ async function getAIAdvice() {
     }
 
     try {
-        async function fetchMealRecords() {
-    const response = await fetch(
+        const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&order=datetime.desc&limit=10`,
             {
                 method: 'GET',
@@ -1017,11 +990,6 @@ async function getAIAdvice() {
         }
 
         const mealRecords = await response.json();
-    return mealRecords;
-}
-
-async function getAIFoodDiagnosis() {
-    const mealRecords = await fetchMealRecords();
 
         if (!mealRecords || mealRecords.length === 0) {
             showNotification('食事記録が見つかりません。まず食事を記録してください。', 'info');
@@ -1031,8 +999,7 @@ async function getAIFoodDiagnosis() {
         const advice = generateSimpleAdvice(mealRecords);
         showNotification(advice, 'info');
         
-    } catch (error) {
-        console.error('AIアドバイスエラー:', error);
+    } catch (error) {        console.error('AIアドバイスエラー:', error);
         showNotification('アドバイスの取得中にエラーが発生しました。', 'error');
     }
 }
@@ -1112,70 +1079,14 @@ function loadSavedLLMProvider() {
 }
 
 // AI食事診断の実行（LLM選択対応版）
-
 async function getAIFoodDiagnosis() {
-    try {
-        // 選択されたLLMプロバイダーを取得
-        const llmProvider = getSelectedLLMProvider();
-        console.log(`選択されたLLMプロバイダー: ${llmProvider}`);
-
-        // 診断中の表示
-        document.getElementById('diagnosisJa').textContent = `${llmProvider.toUpperCase()}で診断中...`;
-        document.getElementById('diagnosisEn').textContent = `Analyzing with ${llmProvider.toUpperCase()}...`;
-
-        // 最新の食事記録を取得（過去1週間）
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        
-        async function fetchMealRecords() {
-    const response = await fetch(
-            `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
-            {
-                method: 'GET',
-                headers: {
-                    'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                    'Accept': 'application/json'
-                }
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error('食事記録の取得に失敗しました');
-        }
-
-        const mealRecords = await response.json();
-    return mealRecords;
-}
-
-async function getAIFoodDiagnosis() {
-    const mealRecords = await fetchMealRecords();
-
-        if (!mealRecords || mealRecords.length === 0) {
-            document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
-            document.getElementById('diagnosisEn').textContent = 'No meal records found. Please record some meals before requesting a diagnosis.';
-            return;
-        }
-
-        // AI診断を取得（LLMプロバイダー指定）
-        const diagnosis = await getAIDiagnosisFromBackend(mealRecords, llmProvider);
-
-        // 診断結果の表示
-        document.getElementById('diagnosisJa').textContent = diagnosis.diagnosisJa;
-        document.getElementById('diagnosisEn').textContent = diagnosis.diagnosisEn;
-
-        // 使用されたLLMプロバイダーの表示を更新
-        updateLLMProviderStatus(diagnosis.llmProvider || llmProvider);
-
-        // 診断結果セクションを表示
-        document.getElementById('aiDiagnosisResult').style.display = 'block';
-
-    } catch (error) {
-        console.error('AI食事診断エラー:', error);
-        document.getElementById('diagnosisJa').innerHTML = `<div class="diagnosis-error">エラー: ${error.message}</div>`;
-        document.getElementById('diagnosisEn').innerHTML = `<div class="diagnosis-error">Error: ${error.message}</div>`;
+    // 診断結果セクションを表示
+    const resultContainer = document.getElementById('aiDiagnosisResult');
+    if (!resultContainer) {
+        console.error('診断結果表示エリアが見つかりません');
+        return;
     }
-}
+    resultContainer.style.display = 'block';
 
     try {
         // 選択されたLLMプロバイダーを取得
@@ -1183,15 +1094,17 @@ async function getAIFoodDiagnosis() {
         console.log(`選択されたLLMプロバイダー: ${llmProvider}`);
 
         // 診断中の表示
-        document.getElementById('diagnosisJa').textContent = `${llmProvider.toUpperCase()}で診断中...`;
-        document.getElementById('diagnosisEn').textContent = `Analyzing with ${llmProvider.toUpperCase()}...`;
+        const diagnosisJa = document.getElementById('diagnosisJa');
+        const diagnosisEn = document.getElementById('diagnosisEn');
+        
+        if (diagnosisJa) diagnosisJa.textContent = `${llmProvider.toUpperCase()}で診断中...`;
+        if (diagnosisEn) diagnosisEn.textContent = `Analyzing with ${llmProvider.toUpperCase()}...`;
 
         // 最新の食事記録を取得（過去1週間）
         const oneWeekAgo = new Date();
         oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
         
-        async function fetchMealRecords() {
-    const response = await fetch(
+        const response = await fetch(
             `${SUPABASE_URL}/rest/v1/meal_records?select=*&user_id=eq.${currentUserId}&datetime=gte.${oneWeekAgo.toISOString()}&order=datetime.desc`,
             {
                 method: 'GET',
@@ -1208,15 +1121,10 @@ async function getAIFoodDiagnosis() {
         }
 
         const mealRecords = await response.json();
-    return mealRecords;
-}
-
-async function getAIFoodDiagnosis() {
-    const mealRecords = await fetchMealRecords();
 
         if (!mealRecords || mealRecords.length === 0) {
-            document.getElementById('diagnosisJa').textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
-            document.getElementById('diagnosisEn').textContent = 'No meal records found. Please record some meals before requesting a diagnosis.';
+            if (diagnosisJa) diagnosisJa.textContent = '食事記録が見つかりません。まず食事を記録してから診断をお試しください。';
+            if (diagnosisEn) diagnosisEn.textContent = 'No meal records found. Please record some meals before requesting a diagnosis.';
             return;
         }
 
@@ -1224,16 +1132,22 @@ async function getAIFoodDiagnosis() {
         const diagnosis = await getAIDiagnosisFromBackend(mealRecords, llmProvider);
 
         // 診断結果の表示
-        document.getElementById('diagnosisJa').textContent = diagnosis.diagnosisJa;
-        document.getElementById('diagnosisEn').textContent = diagnosis.diagnosisEn;
+        if (diagnosisJa) diagnosisJa.textContent = diagnosis.diagnosisJa;
+        if (diagnosisEn) diagnosisEn.textContent = diagnosis.diagnosisEn;
 
         // 使用されたLLMプロバイダーの表示を更新
         updateLLMProviderStatus(diagnosis.llmProvider || llmProvider);
 
     } catch (error) {
         console.error('AI食事診断エラー:', error);
-        document.getElementById('diagnosisJa').innerHTML = `<div class="diagnosis-error">エラー: ${error.message}</div>`;
-        document.getElementById('diagnosisEn').innerHTML = `<div class="diagnosis-error">Error: ${error.message}</div>`;
+        const errorMessage = `<div class="diagnosis-error">エラー: ${error.message}</div>`;
+        const errorMessageEn = `<div class="diagnosis-error">Error: ${error.message}</div>`;
+        
+        const diagnosisJa = document.getElementById('diagnosisJa');
+        const diagnosisEn = document.getElementById('diagnosisEn');
+        
+        if (diagnosisJa) diagnosisJa.innerHTML = errorMessage;
+        if (diagnosisEn) diagnosisEn.innerHTML = errorMessageEn;
     }
 }
 
@@ -1251,8 +1165,7 @@ async function getAIDiagnosisFromBackend(mealRecords, llmProvider) {
             custom_prompt_en: customPromptEn
         });
 
-        async function fetchMealRecords() {
-    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/ai-diagnosis', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1280,8 +1193,7 @@ async function getAIDiagnosisFromBackend(mealRecords, llmProvider) {
             diagnosisEn: data.diagnosis_en,
             llmProvider: data.llm_provider
         };
-    } catch (error) {
-        console.error('バックエンドAPI呼び出しエラー:', error);
+    } catch (error) {        console.error('バックエンドAPI呼び出しエラー:', error);
         throw new Error(`AI診断サービスへの接続に失敗しました: ${error.message}`);
     }
 }
@@ -1304,8 +1216,7 @@ async function testCohereConnection() {
     if (statusDiv) statusDiv.textContent = 'COHERE API接続テスト中...';
     
     try {
-        async function fetchMealRecords() {
-    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-cohere', {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-cohere', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1321,8 +1232,7 @@ async function testCohereConnection() {
             statusDiv.textContent = '❌ 接続失敗: ' + data.error;
             showNotification('COHERE API接続テスト失敗', 'error');
         }
-    } catch (error) {
-        console.error('COHERE接続テストエラー:', error);
+    } catch (error) {        console.error('COHERE接続テストエラー:', error);
         statusDiv.textContent = '❌ テストエラー: ' + error.message;
         showNotification('接続テストでエラーが発生しました', 'error');
     } finally {
@@ -1339,8 +1249,7 @@ async function testGeminiConnection() {
     if (statusDiv) statusDiv.textContent = 'Gemini API接続テスト中...';
     
     try {
-        async function fetchMealRecords() {
-    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-gemini', {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/test-gemini', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1356,8 +1265,7 @@ async function testGeminiConnection() {
             statusDiv.textContent = '❌ 接続失敗: ' + data.error;
             showNotification('Gemini API接続テスト失敗', 'error');
         }
-    } catch (error) {
-        console.error('Gemini接続テストエラー:', error);
+    } catch (error) {        console.error('Gemini接続テストエラー:', error);
         statusDiv.textContent = '❌ テストエラー: ' + error.message;
         showNotification('接続テストでエラーが発生しました', 'error');
     } finally {
@@ -1379,8 +1287,7 @@ async function showPromptEditorModal() {
     try {
         statusDiv.textContent = 'プロンプトテンプレートを読み込み中...';
         
-        async function fetchMealRecords() {
-    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (response.ok) {
             const data = await response.json();
             textarea.value = customPromptTemplate || data.default_template;
@@ -1388,8 +1295,7 @@ async function showPromptEditorModal() {
         } else {
             throw new Error('プロンプトテンプレートの取得に失敗しました');
         }
-    } catch (error) {
-        console.error('プロンプト取得エラー:', error);
+    } catch (error) {        console.error('プロンプト取得エラー:', error);
         statusDiv.textContent = 'エラー: ' + error.message;
     }
     
@@ -1418,8 +1324,7 @@ async function savePromptTemplate() {
     try {
         statusDiv.textContent = '保存中...';
         
-        async function fetchMealRecords() {
-    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1444,8 +1349,7 @@ async function savePromptTemplate() {
             const errorData = await response.json();
             throw new Error(errorData.error || '保存に失敗しました');
         }
-    } catch (error) {
-        console.error('プロンプト保存エラー:', error);
+    } catch (error) {        console.error('プロンプト保存エラー:', error);
         statusDiv.textContent = 'エラー: ' + error.message;
         showNotification('プロンプトの保存に失敗しました', 'error');
     }
@@ -1461,8 +1365,7 @@ async function resetPromptTemplate() {
     try {
         statusDiv.textContent = 'デフォルトプロンプトを読み込み中...';
         
-        async function fetchMealRecords() {
-    const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
+        const response = await fetch('https://meal-tracker-2-jyq6.onrender.com/api/prompt-template');
         if (response.ok) {
             const data = await response.json();
             textarea.value = data.default_template;
@@ -1475,8 +1378,7 @@ async function resetPromptTemplate() {
         } else {
             throw new Error('デフォルトプロンプトの取得に失敗しました');
         }
-    } catch (error) {
-        console.error('プロンプトリセットエラー:', error);
+    } catch (error) {        console.error('プロンプトリセットエラー:', error);
         statusDiv.textContent = 'エラー: ' + error.message;
     }
 }

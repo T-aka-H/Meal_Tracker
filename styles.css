@@ -418,6 +418,15 @@ h1 {
     color: var(--primary-black);
 }
 
+.diagnosis-error {
+    color: #dc2626;
+    padding: 12px;
+    background-color: #fef2f2;
+    border: 1px solid #fee2e2;
+    border-radius: 6px;
+    margin: 10px 0;
+}
+
 /* ローディング */
 .loading {
     display: inline-block;
