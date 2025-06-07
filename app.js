@@ -1397,28 +1397,23 @@ function showAIDiagnosisResult(diagnosis) {
         return;
     }
 
-    // 診断結果をHTMLに整形
-    const formattedDiagnosis = formatDiagnosisForDisplay(diagnosis);
-    
-    const promptStatus = customPromptTemplate ? 
-        '<span style="color: #059669;">📝 カスタムプロンプト使用</span>' : 
-        '<span style="color: #6b7280;">📄 デフォルトプロンプト使用</span>';
-    
-    resultContainer.innerHTML = `
-        <div class="ai-diagnosis-container">
-            <h4>🤖 AI食事診断結果</h4>
-            <div style="text-align: right; font-size: 0.8em; margin-bottom: 10px;">
-                ${promptStatus}
-                <span class="llm-provider-status">${selectedLLMProvider.toUpperCase()}</span>
-            </div>
-            <div class="diagnosis-content">
-                ${formattedDiagnosis}
-            </div>
-            <div class="diagnosis-footer">
-                <small>※ この診断は参考情報です。詳細な栄養指導については専門家にご相談ください。</small>
-            </div>
-        </div>
-    `;
+    // 日本語とEnglishの部分を分離
+    const [jaText, enText] = diagnosis.split('===English Analysis===').map(text => text.trim());
+
+    // 診断結果を表示
+    const diagnosisJa = document.getElementById('diagnosisJa');
+    const diagnosisEn = document.getElementById('diagnosisEn');
+
+    if (diagnosisJa) {
+        diagnosisJa.innerHTML = formatDiagnosisForDisplay(jaText);
+    }
+
+    if (diagnosisEn) {
+        diagnosisEn.innerHTML = formatDiagnosisForDisplay(enText || '');
+    }
+
+    // 結果エリアを表示
+    resultContainer.style.display = 'block';
 
     // 結果エリアにスクロール
     resultContainer.scrollIntoView({ behavior: 'smooth' });
@@ -1426,6 +1421,8 @@ function showAIDiagnosisResult(diagnosis) {
 
 // 診断結果をHTML表示用にフォーマット
 function formatDiagnosisForDisplay(diagnosis) {
+    if (!diagnosis) return '';
+
     // 改行を<br>タグに変換
     let formatted = diagnosis.replace(/\n/g, '<br>');
     
@@ -1439,7 +1436,7 @@ function formatDiagnosisForDisplay(diagnosis) {
         formatted = formatted.replace(regex, '<span class="highlight">$1</span>');
     });
     
-    return `<div class="diagnosis-text">${formatted}</div>`;
+    return formatted;
 }
 
 // HTML要素の追加（修正版 - LLM選択UI含む）

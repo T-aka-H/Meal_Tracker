@@ -406,6 +406,18 @@ h1 {
     white-space: pre-wrap;
 }
 
+.diagnosis-text .highlight {
+    background-color: #fef3c7;
+    color: #92400e;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 500;
+}
+
+.diagnosis-text strong {
+    color: var(--primary-black);
+}
+
 /* ローディング */
 .loading {
     display: inline-block;
