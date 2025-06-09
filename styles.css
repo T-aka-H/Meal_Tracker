@@ -609,3 +609,14 @@ h1 {
     outline: 2px solid var(--dark-gray);
     outline-offset: 2px;
 }
+
+.loading-message {
+    color: #666;
+    font-size: 0.9em;
+    margin-top: 8px;
+    display: none;
+}
+
+.loading-message.visible {
+    display: block;
+}

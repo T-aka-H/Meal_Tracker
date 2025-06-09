@@ -158,6 +158,9 @@ async function initializeSupabase() {
 // ユーザー一覧の読み込み
 async function loadUsers() {
     console.log('ユーザー読み込み開始');
+    const loadingMessage = document.getElementById('userLoadingMessage');
+    loadingMessage.classList.add('visible');
+    
     try {
         if (!supabaseClient) {
             throw new Error('Supabaseクライアントが初期化されていません');
@@ -178,9 +181,12 @@ async function loadUsers() {
             await switchUser(firstUser.id);
         }
 
+        loadingMessage.classList.remove('visible');
         return true;
-    } catch (error) {        console.error('ユーザー読み込みエラー:', error);
+    } catch (error) {
+        console.error('ユーザー読み込みエラー:', error);
         showNotification('ユーザー情報の読み込みに失敗しました: ' + error.message, 'error');
+        loadingMessage.classList.remove('visible');
         return false;
     }
 }
@@ -1489,19 +1495,19 @@ function addAIDiagnosisElements() {
     const btnGroup = aiControls.querySelector('.ai-btn-group');
     if (btnGroup) {
         btnGroup.innerHTML = `
-            <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
-                🔍 AI診断を実行
+                <button id="aiDiagnosisBtn" onclick="getAIFoodDiagnosis()" class="btn btn-primary">
+                    🔍 AI診断を実行
                 <span id="diagnosisLoading" class="loading" style="display: none;"></span>
-            </button>
-            <button onclick="showPromptEditorModal()" class="btn btn-secondary">
-                ✏️ プロンプト編集
-            </button>
-            <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
-                🔗 Cohereテスト
-            </button>
-            <button id="testGeminiBtn" onclick="testGeminiConnection()" class="btn btn-secondary">
-                🔗 Geminiテスト
-            </button>
+                </button>
+                <button onclick="showPromptEditorModal()" class="btn btn-secondary">
+                    ✏️ プロンプト編集
+                </button>
+                <button id="testCohereBtn" onclick="testCohereConnection()" class="btn btn-secondary">
+                    🔗 Cohereテスト
+                </button>
+                <button id="testGeminiBtn" onclick="testGeminiConnection()" class="btn btn-secondary">
+                    🔗 Geminiテスト
+                </button>
         `;
     }
 
